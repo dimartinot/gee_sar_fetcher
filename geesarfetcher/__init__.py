@@ -16,7 +16,6 @@ from geesarfetcher.utils import *
 warnings.simplefilter(action="ignore")
 ee.Initialize()
 
-
 def fetch(
     top_left=None,
     bottom_right=None,
@@ -51,16 +50,17 @@ def fetch(
                 4-D array containing db intensity measure (`numpy.ndarray`), ``(height, width, time_series_length, pol_count)``
             ``"timestamps"``
                 list of acquisition timestamps of size (time_series_length,) (`list of str`)
+            ``"metadata"``
+                Dictionnary describing data for each axis of the stack
 
     '''
 
     assert(coords is None or (
-        (type(coords) == list or type(coords) == tuple) and len(coords) == 2) and 
-        len(coords[0]) == len(coords[1]) and len(coords[0]) == 2), "Coords parameter needs to be a tuple/list of size 2 or 5"
+        (type(coords) == list or type(coords) == tuple) and len(coords) == 2) and len(coords[0]) == len(coords[1]) and len(coords[0]) == 2)
 
     assert((top_left is None and bottom_right is None)
            or (type(top_left) == type(bottom_right) and (type(top_left) == tuple or type(top_left) == list))
-           and len(top_left) == len(bottom_right) and len(top_left) == 2), "Top Left and Top Right both need to be initialized as lists/tuples of size 2"
+           and len(top_left) == len(bottom_right) and len(top_left) == 2)
 
     assert(start_date is not None)
     assert(end_date is not None)
@@ -95,34 +95,36 @@ def fetch(
                           .filter(ee.Filter.eq('orbitProperties_pass', orbit))
                           .filter(ee.Filter.eq('resolution_meters', 10))
                           )
-        val_vv = sentinel_1_roi.select("VV").getRegion(polygon,scale=10).getInfo()
-        
+        val_vv = sentinel_1_roi.select("VV").getRegion(
+            polygon, scale=10).getInfo()
+
     except Exception as e:
-        
-        #If the area is found to be too big
+
+        # If the area is found to be too big
         if (str(e) == "ImageCollection.getRegion: No bands in collection."):
             raise ValueError(
                 "No bands found in collection. Orbit incorrect for localisation, please visit https://sentinel.esa.int/web/sentinel/missions/sentinel-1/observation-scenario for more info.")
         total_count_of_pixels = retrieve_max_pixel_count_from_pattern(str(e))
-
         if top_left is not None:
             list_of_coordinates = tile_coordinates(
                 total_count_of_pixels, (top_left, bottom_right))
         else:
-            list_of_coordinates = tile_coordinates(total_count_of_pixels, coords)
+            list_of_coordinates = tile_coordinates(
+                total_count_of_pixels, coords)
 
     per_coord_dict = {}
     ###################################
     ## RETRIEVING COORDINATES VALUES ##
     ## FOR EACH DATE INTERVAL        ##
     ###################################
-    print(f"Region sliced in {len(list_of_coordinates)} subregions and {len(date_intervals)} time intervals.")
-    
+    print(
+        f"Region sliced in {len(list_of_coordinates)} subregions and {len(date_intervals)} time intervals.")
+
     vals = []
     val_header = []
     for sub_start_date, sub_end_date in tqdm(date_intervals):
         for c in list_of_coordinates:
-            
+
             polygon = ee.Geometry.Polygon([
                 c
             ])
@@ -145,18 +147,18 @@ def fetch(
                     "VV").getRegion(polygon, scale=10).getInfo()
                 val_vh = sentinel_1_roi.select(
                     "VH").getRegion(polygon, scale=10).getInfo()
-                
+
                 val_header = val_vv[0] + ["VH"]
                 val = [
-                   val_vv[i] + [val_vh[i][val_vh[0].index("VH")]] for i in range(1,len(val_vv))
+                    val_vv[i] + [val_vh[i][val_vh[0].index("VH")]] for i in range(1, len(val_vv))
                 ]
 
                 vals.extend(val)
             except Exception as e:
-                pass # passing date, no data found for this time interval
+                pass  # passing date, no data found for this time interval
 
     dictified_vals = [dict(zip(val_header, values)) for values in vals]
-    print("Transforming coordinate measures into pixel measures..")
+
     for entry in dictified_vals:
         lat = entry["latitude"]
         lon = entry["longitude"]
@@ -170,7 +172,7 @@ def fetch(
 
             datetime = entry["id"].split("_")[4]
 
-            per_coord_dict[new_key]["timestamps"].append(datetime)
+            per_coord_dict[new_key]["timestamps"].append(datetime[:8])
 
         else:
             per_coord_dict[new_key] = {}
@@ -182,7 +184,7 @@ def fetch(
 
             datetime = entry["id"].split("_")[4]
 
-            per_coord_dict[new_key]["timestamps"] = [datetime]
+            per_coord_dict[new_key]["timestamps"] = [datetime[:8]]
 
     # per_coord_dict is a dictionnary matching to each coordinate key its values through time as well as its timestamps
 
@@ -195,8 +197,10 @@ def fetch(
 
     # sorting pixels by latitude then longitude
     pixel_values.sort(key=cmp_coordinates)
-    # we assume similar dates for each pixels
-    date_count = len(pixel_values[0]['VV'])
+
+    timestamps = np.unique([pixel_values[i]['timestamps'][j] for i in range(
+        len(pixel_values)) for j in range(len(pixel_values[i]['timestamps']))])
+    date_count = len(timestamps)
 
     # counting pixels with common latitude until it changes to know the image width
     width = 1
@@ -210,12 +214,19 @@ def fetch(
 
     for i in range(height):
         for j in range(width):
-            img[i,j,0,:] = pixel_values[i*width + j]["VV"]
-            img[i,j,1:] = pixel_values[i*width + j]["VH"]
+            for t, timestamp in enumerate(timestamps):
+                indexes = np.argwhere(
+                    np.array(pixel_values[i*width + j]
+                             ["timestamps"]) == timestamp
+                )
+                img[i, j, 0, t] = np.nanmean(
+                    np.array(pixel_values[i*width + j]["VV"], dtype=float)[indexes])
+                img[i, j, 1, t] = np.nanmean(
+                    np.array(pixel_values[i*width + j]["VH"], dtype=float)[indexes])
 
     return {
         "stack": img,
-        "timestamps": pixel_values[0]['timestamps'],
+        "timestamps": timestamps,
         "metadata": {
             "axis_0": "height",
             "axis_1": "width",
@@ -223,3 +234,5 @@ def fetch(
             "axis_3": "timestamps"
         }
     }
+
+    

@@ -5,7 +5,7 @@ MAX_GEE_PIXELS_DOWNLOAD = 1048576
 GEE_ERROR_PLACEHOLDER = "ImageCollection.getRegion: Too many values: "
 
 __all__ = ('tile_coordinates', 'retrieve_max_pixel_count_from_pattern',
-           'cmp_coords', 'get_date_interval_array')
+           'cmp_coords', 'get_date_interval_array', 'make_polygon')
 
 
 def make_polygon(top_left, bottom_right):

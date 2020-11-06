@@ -1,6 +1,8 @@
 from geesarfetcher import fetch
 import unittest
 from datetime import datetime, date, timedelta
+import warnings
+warnings.simplefilter(action="ignore")
 
 # SMALL COORDS
 SMALL_COORDS = [
@@ -20,12 +22,13 @@ MED_COORDS = [
 ]
 
 BIG_COORDS = [
-    [-104.88572453696113,41.62148183942426],
-    [-104.53690861899238,41.62148183942426],
-    [-104.53690861899238,41.884778748257574],
-    [-104.88572453696113,41.884778748257574],
-    [-104.88572453696113,41.62148183942426]
+    [-104.88572453696113, 41.62148183942426],
+    [-104.53690861899238, 41.62148183942426],
+    [-104.53690861899238, 41.884778748257574],
+    [-104.88572453696113, 41.884778748257574],
+    [-104.88572453696113, 41.62148183942426]
 ]
+
 
 class TestFetcher(unittest.TestCase):
     def test_small_download(self):
@@ -34,14 +37,14 @@ class TestFetcher(unittest.TestCase):
         d = fetch(
             top_left=SMALL_COORDS[0],
             bottom_right=SMALL_COORDS[2],
-            start_date=datetime(year=2020, month=8, day=16),
-            end_date=datetime(year=2020, month=10, day=28),
+            start_date=datetime(year=2020, month=10, day=24),
+            end_date=datetime(year=2020, month=11, day=2),
             ascending=False)
 
         self.assertTrue(isinstance(d, dict))
         self.assertTrue("timestamps" in list(d.keys())
-                        and len(d["timestamps"] == 15))
-        self.assertTrue(d["stack"].shape == (64, 83, 2, 15))
+                        and len(d["timestamps"]) == 2)
+        self.assertTrue(d["stack"].shape == (64, 83, 2, 2))
 
     def test_medium_download(self):
         '''Tests download with a medium region (at least one cut) and small time interval
@@ -49,26 +52,26 @@ class TestFetcher(unittest.TestCase):
         d = fetch(
             top_left=MED_COORDS[0],
             bottom_right=MED_COORDS[2],
-            start_date=datetime(year=2020, month=10, day=13),
-            end_date=datetime(year=2020, month=10, day=28),
+            start_date=datetime(year=2020, month=10, day=24),
+            end_date=datetime(year=2020, month=11, day=2),
             ascending=False)
 
         self.assertTrue(isinstance(d, dict))
         self.assertTrue("timestamps" in list(d.keys())
-                        and len(d["timestamps"] == 15))
-        self.assertTrue(d["stack"].shape == (64, 83, 2, 15))
+                        and len(d["timestamps"]) == 2)
+        self.assertTrue(d["stack"].shape == (949, 1368, 2, 2))
 
     def test_exceptions(self):
         '''Tests raised exceptions
         '''
         # Redundant information provided as input
         kwargs = {
-            "top_left":MED_COORDS[0],
-            "bottom_right":MED_COORDS[2],
-            "coords":MED_COORDS,
-            "start_date":datetime(year=2020, month=8, day=16),
-            "end_date":datetime(year=2020, month=10, day=28),
-            "ascending":False
+            "top_left": MED_COORDS[0],
+            "bottom_right": MED_COORDS[2],
+            "coords": [MED_COORDS[0],MED_COORDS[2]],
+            "start_date": datetime(year=2020, month=10, day=24),
+            "end_date": datetime(year=2020, month=11, day=2),
+            "ascending": False
         }
         self.assertRaises(ValueError, fetch, **kwargs)
 
@@ -77,7 +80,7 @@ class TestFetcher(unittest.TestCase):
         self.assertRaises(ValueError, fetch, **kwargs)
 
         # Only one coordinate provided
-        kwargs["top_left"] = [0.0,0.0]
+        kwargs["top_left"] = [0.0, 0.0]
         self.assertRaises(AssertionError, fetch, **kwargs)
 
         # Missing start date provided
@@ -85,10 +88,9 @@ class TestFetcher(unittest.TestCase):
         kwargs["bottom_right"] = MED_COORDS[2]
         kwargs["start_date"] = None
         self.assertRaises(AssertionError, fetch, **kwargs)
-        
+
         # Missing end date provided
         kwargs["start_date"] = datetime(year=2020, month=8, day=16)
         kwargs["end_date"] = None
         self.assertRaises(AssertionError, fetch, **kwargs)
-
-
+        

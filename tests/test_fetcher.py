@@ -49,7 +49,7 @@ class TestFetcher(unittest.TestCase):
         d = fetch(
             top_left=MED_COORDS[0],
             bottom_right=MED_COORDS[2],
-            start_date=datetime(year=2020, month=8, day=16),
+            start_date=datetime(year=2020, month=10, day=13),
             end_date=datetime(year=2020, month=10, day=28),
             ascending=False)
 
@@ -74,7 +74,21 @@ class TestFetcher(unittest.TestCase):
 
         # No coordinates provided
         kwargs["top_left"] = kwargs["bottom_right"] = kwargs["coords"] = None
+        self.assertRaises(ValueError, fetch, **kwargs)
+
+        # Only one coordinate provided
+        kwargs["top_left"] = [0.0,0.0]
         self.assertRaises(AssertionError, fetch, **kwargs)
 
+        # Missing start date provided
+        kwargs["top_left"] = MED_COORDS[0]
+        kwargs["bottom_right"] = MED_COORDS[2]
+        kwargs["start_date"] = None
+        self.assertRaises(AssertionError, fetch, **kwargs)
         
+        # Missing end date provided
+        kwargs["start_date"] = datetime(year=2020, month=8, day=16)
+        kwargs["end_date"] = None
+        self.assertRaises(AssertionError, fetch, **kwargs)
+
 

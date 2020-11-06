@@ -55,11 +55,12 @@ def fetch(
     '''
 
     assert(coords is None or (
-        (type(coords) == list or type(coords) == tuple) and len(coords) == 2) and len(coords[0]) == len(coords[1]) and len(coords[0]) == 2)
+        (type(coords) == list or type(coords) == tuple) and len(coords) == 2) and 
+        len(coords[0]) == len(coords[1]) and len(coords[0]) == 2), "Coords parameter needs to be a tuple/list of size 2 or 5"
 
     assert((top_left is None and bottom_right is None)
            or (type(top_left) == type(bottom_right) and (type(top_left) == tuple or type(top_left) == list))
-           and len(top_left) == len(bottom_right) and len(top_left) == 2)
+           and len(top_left) == len(bottom_right) and len(top_left) == 2), "Top Left and Top Right both need to be initialized as lists/tuples of size 2"
 
     assert(start_date is not None)
     assert(end_date is not None)

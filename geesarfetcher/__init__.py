@@ -73,20 +73,13 @@ def fetch(
     orbit = "ASCENDING" if ascending else "DESCENDING"
 
     if (top_left is not None):
-        polygon = ee.Geometry.Polygon([
-            [top_left],  # top-left
-            [top_left[0], bottom_right[1]],  # top-right
-            [bottom_right],  # bottom-right
-            [bottom_right[0], top_left[1]],
-            [top_left]
-        ])
+        list_of_coordinates = [make_polygon(top_left, bottom_right)]
     else:
-        polygon = ee.Geometry.Polygon([
-            coords
-        ])
+        list_of_coordinates = [coords]
 
     # retrieving the number of pixels per image
     try:
+        polygon = ee.Geometry.Polygon(list_of_coordinates)
         # Call collection of satellite images.
         sentinel_1_roi = (ee.ImageCollection("COPERNICUS/S1_GRD")
                           # Filter for images within a given date range.
@@ -94,38 +87,41 @@ def fetch(
                           # Filter for images that overlap with the assigned geometry.
                           .filterBounds(polygon)
                           # Filter orbit
-                          .filter(ee.Filter.inList('transmitterReceiverPolarisation', 'VV'))
-                          .filter(ee.Filter.inList('transmitterReceiverPolarisation', 'VH'))
+                          .filter(ee.Filter.listContains('transmitterReceiverPolarisation', 'VV'))
+                          .filter(ee.Filter.listContains('transmitterReceiverPolarisation', 'VH'))
                           # Filter to get images collected in interferometric wide swath mode.
                           .filter(ee.Filter.eq('instrumentMode', 'IW'))
                           .filter(ee.Filter.eq('orbitProperties_pass', orbit))
                           .filter(ee.Filter.eq('resolution_meters', 10))
                           )
-        val_vv = sentinel_1_roi.select("VV").getRegion(polygon).getInfo()
-
-    # take into account different exceptiuons ("no band found in collection")
+        val_vv = sentinel_1_roi.select("VV").getRegion(polygon,scale=10).getInfo()
+        
     except Exception as e:
+        
+        #If the area is found to be too big
         if (str(e) == "ImageCollection.getRegion: No bands in collection."):
             raise ValueError(
                 "No bands found in collection. Orbit incorrect for localisation, please visit https://sentinel.esa.int/web/sentinel/missions/sentinel-1/observation-scenario for more info.")
-        total_count_of_pixels = retrieve_max_pixel_count_from_pattern_(str(e))
+        total_count_of_pixels = retrieve_max_pixel_count_from_pattern(str(e))
 
-    if top_left is not None:
-        list_of_coordinates = tile_coordinates(
-            total_count_of_pixels, (top_left, bottom_right))
-    else:
-        list_of_coordinates = tile_coordinates(total_count_of_pixels, coords)
+        if top_left is not None:
+            list_of_coordinates = tile_coordinates(
+                total_count_of_pixels, (top_left, bottom_right))
+        else:
+            list_of_coordinates = tile_coordinates(total_count_of_pixels, coords)
 
-    vals = []
     per_coord_dict = {}
-
     ###################################
     ## RETRIEVING COORDINATES VALUES ##
     ## FOR EACH DATE INTERVAL        ##
     ###################################
-
+    print(f"Region sliced in {len(list_of_coordinates)} subregions and {len(date_intervals)} time intervals.")
+    
+    vals = []
+    val_header = []
     for sub_start_date, sub_end_date in tqdm(date_intervals):
         for c in list_of_coordinates:
+            
             polygon = ee.Geometry.Polygon([
                 c
             ])
@@ -137,59 +133,55 @@ def fetch(
                                   # Filter for images that overlap with the assigned geometry.
                                   .filterBounds(polygon)
                                   # Filter orbit
-                                  .filter(ee.Filter.inList('transmitterReceiverPolarisation', 'VV'))
-                                  .filter(ee.Filter.inList('transmitterReceiverPolarisation', 'VH'))
+                                  .filter(ee.Filter.listContains('transmitterReceiverPolarisation', 'VV'))
+                                  .filter(ee.Filter.listContains('transmitterReceiverPolarisation', 'VH'))
                                   # Filter to get images collected in interferometric wide swath mode.
                                   .filter(ee.Filter.eq('instrumentMode', 'IW'))
                                   .filter(ee.Filter.eq('orbitProperties_pass', orbit))
                                   .filter(ee.Filter.eq('resolution_meters', 10))
                                   )
                 val_vv = sentinel_1_roi.select(
-                    "VV").getRegion(polygon).getInfo()
+                    "VV").getRegion(polygon, scale=10).getInfo()
                 val_vh = sentinel_1_roi.select(
-                    "VH").getRegion(polygon).getInfo()
-
-                val_vv = [
-                    [val_vv[i][0] + ["VV"], val_vv[i][1] + [val_vh[i][1][val_vh[i][0].index("VH")]]] for i in range(len(val_vv))
+                    "VH").getRegion(polygon, scale=10).getInfo()
+                
+                val_header = val_vv[0] + ["VH"]
+                val = [
+                   val_vv[i] + [val_vh[i][val_vh[0].index("VH")]] for i in range(1,len(val_vv))
                 ]
 
-                vals.extend(val_vv)
-
-            # take into account different exceptiuons ("no band found in collection")
+                vals.extend(val)
             except Exception as e:
-                if (str(e) == "ImageCollection.getRegion: No bands in collection."):
-                    raise ValueError(
-                        "No bands found in collection. Orbit incorrect for localisation, please visit https://sentinel.esa.int/web/sentinel/missions/sentinel-1/observation-scenario for more info.")
-                total_count_of_pixels = retrieve_max_pixel_count_from_pattern_(
-                    str(e))
+                pass # passing date, no data found for this time interval
 
-        dictified_vals = [dict(zip(vals[0], values)) for values in vals[1:]]
-        for entry in dictified_vals:
-            lat = entry["latitude"]
-            lon = entry["longitude"]
+    dictified_vals = [dict(zip(val_header, values)) for values in vals]
+    print("Transforming coordinate measures into pixel measures..")
+    for entry in dictified_vals:
+        lat = entry["latitude"]
+        lon = entry["longitude"]
 
-            new_key = str(lat)+":"+str(lon)
+        new_key = str(lat)+":"+str(lon)
 
-            if new_key in per_coord_dict:
-                # Retrieving measured value
-                per_coord_dict[new_key]["VV"].append(entry["VV"])
-                per_coord_dict[new_key]["VH"].append(entry["VH"])
+        if new_key in per_coord_dict:
+            # Retrieving measured value
+            per_coord_dict[new_key]["VV"].append(entry["VV"])
+            per_coord_dict[new_key]["VH"].append(entry["VH"])
 
-                datetime = entry["id"].split("_")[4]
+            datetime = entry["id"].split("_")[4]
 
-                per_coord_dict[new_key]["timestamps"].append(datetime)
+            per_coord_dict[new_key]["timestamps"].append(datetime)
 
-            else:
-                per_coord_dict[new_key] = {}
-                # Retrieving measured value
-                per_coord_dict[new_key]["lat"] = lat
-                per_coord_dict[new_key]["lon"] = lon
-                per_coord_dict[new_key]["VV"] = [entry["VV"]]
-                per_coord_dict[new_key]["VH"] = [entry["VH"]]
+        else:
+            per_coord_dict[new_key] = {}
+            # Retrieving measured value
+            per_coord_dict[new_key]["lat"] = lat
+            per_coord_dict[new_key]["lon"] = lon
+            per_coord_dict[new_key]["VV"] = [entry["VV"]]
+            per_coord_dict[new_key]["VH"] = [entry["VH"]]
 
-                datetime = entry["id"].split("_")[4]
+            datetime = entry["id"].split("_")[4]
 
-                per_coord_dict[new_key]["timestamps"] = [datetime]
+            per_coord_dict[new_key]["timestamps"] = [datetime]
 
     # per_coord_dict is a dictionnary matching to each coordinate key its values through time as well as its timestamps
 
@@ -202,7 +194,6 @@ def fetch(
 
     # sorting pixels by latitude then longitude
     pixel_values.sort(key=cmp_coordinates)
-
     # we assume similar dates for each pixels
     date_count = len(pixel_values[0]['VV'])
 
@@ -214,14 +205,20 @@ def fetch(
     # deducing the image height from its width
     height = len(pixel_values) // width
 
-    img = np.zeros((height, width) + (date_count, 2))  # VV & VH bands
+    img = np.zeros((height, width) + (2, date_count))  # VV & VH bands
 
     for i in range(height):
         for j in range(width):
-            img[i][j][0] = pixel_values[i*width + j]["VV"]
-            img[i][j][1] = pixel_values[i*width + j]["VH"]
+            img[i,j,0,:] = pixel_values[i*width + j]["VV"]
+            img[i,j,1:] = pixel_values[i*width + j]["VH"]
 
     return {
         "stack": img,
-        "timestamps": pixel_values[0]['timestamps']
+        "timestamps": pixel_values[0]['timestamps'],
+        "metadata": {
+            "axis_0": "height",
+            "axis_1": "width",
+            "axis_2": "polarisations (0:VV, 1:VH)",
+            "axis_3": "timestamps"
+        }
     }

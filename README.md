@@ -1,5 +1,5 @@
-# sar_downloader
- An easy-to-use Python library to download SAR GRD imagery from Google Earth Engine.
+# GEE SAR Fetcher
+An easy-to-use Python library to download SAR GRD imagery from Google Earth Engine.
 
 ## Introduction
 Access Google's multi-petabytes of SAR Imagery data from your python code with *no dimension restraint*. Simply supply coordinates, a time interval and obtain a stack of Sentinel-1 preprocessed PolSAR images.

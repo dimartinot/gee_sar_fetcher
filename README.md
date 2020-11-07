@@ -9,7 +9,7 @@ Compatible with python 3.
 
 [![Documentation Status](https://readthedocs.org/projects/gee-sar-fetcher/badge/?version=latest)](https://gee-sar-fetcher.readthedocs.io/en/latest/?badge=latest)
 [![PyPI version](https://badge.fury.io/py/geesarfetcher.svg)](https://badge.fury.io/py/geesarfetcher)
-[![Build Status](https://travis-ci.com/dimartinot/gee_sar_fetcher.svg?branch=dev)](https://travis-ci.com/dimartinot/gee_sar_fetcher)
+
 ## Usage
 ### Python Import
 The main function of this library is the ``fetch`` function:

@@ -8,6 +8,7 @@ python:
   - "3.6"
 
 before_install:
+  - export GEE_API_KEY=$GEE_API_KEY
   - pip install -U pip
   - python travis_setup.py
 

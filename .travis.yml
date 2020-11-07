@@ -1,0 +1,29 @@
+language: python
+
+cache: pip
+
+dist: trusty
+
+python:
+  - "3.6"
+  - "3.7"
+  - "3.8"
+
+before_install:
+  - pip install -U pip
+  - ./travis_setup.py
+
+install:
+  - pip install coveralls
+  - pip install oauth2client
+  - pip install -e .  
+
+script:
+  - python setup.py test
+  - coverage run --source=geesarfetcher/ setup.py test
+
+after_success:
+  - coveralls
+
+notifications:
+  email: false

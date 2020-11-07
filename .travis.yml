@@ -12,9 +12,9 @@ before_install:
   - python travis_setup.py
 
 install:
-  - pip install coveralls
-  - pip install oauth2client
-  - pip install -e .  
+  - pip install coveralls --use-feature=2020-resolver
+  - pip install oauth2client --use-feature=2020-resolver
+  - pip install -e . --use-feature=2020-resolver 
 
 #script:
 #  - python setup.py test

@@ -15,6 +15,7 @@ before_install:
 install:
   - pip install coveralls --use-feature=2020-resolver
   - pip install oauth2client --use-feature=2020-resolver
+  - pip install -Iv certifi==2017.11.5
   - pip install -e . --use-feature=2020-resolver 
 
 script:

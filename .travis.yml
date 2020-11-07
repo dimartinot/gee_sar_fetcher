@@ -11,7 +11,7 @@ python:
 
 before_install:
   - pip install -U pip
-  - ./travis_setup.py
+  - python travis_setup.py
 
 install:
   - pip install coveralls

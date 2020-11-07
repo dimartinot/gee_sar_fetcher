@@ -22,7 +22,7 @@ fetch(
     start_date = date.today()-timedelta(days=15),
     end_date = date.today(),
     ascending=False
-) # returns a dictionnary with access to the data through the 'stack' keyword and to its timestamps through the 'timestamps' keywordc
+) # returns a dictionnary with access to the data through the 'stack' keyword and to its timestamps through the 'timestamps' keyword
 
 ```
 

@@ -25,7 +25,7 @@ extra_reqs['all'] = list(set(itertools.chain(*extra_reqs.values())))
 
 with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
     readme = f.read()
-print(readme)
+    
 setup(name='geesarfetcher',
       version=version,
       description=u"Extract Sentinel-1 GRD time-series images over a given area from google earth engine",

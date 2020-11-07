@@ -10,6 +10,7 @@ python:
 before_install:
   - pip install -U pip
   - python travis_setup.py
+  - pip install -U certifi
 
 install:
   - pip install coveralls

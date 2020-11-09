@@ -23,11 +23,11 @@ Usage
 Python Import
 ~~~~~~~~~~~~~
 
-The main function of this library is the ``fetcher`` function:
+The main function of this library is the ``fetch`` function:
 
 .. code:: python
 
-   from geesarfetcher import fetcher
+   from geesarfetcher import fetch
    from datetime import date, timedelta
 
    fetch(

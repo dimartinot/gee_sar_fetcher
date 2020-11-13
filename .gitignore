@@ -125,5 +125,5 @@ dmypy.json
 .pyre/
 
 .vscode
+README.rst
 .pypi_info.md
-.travis.yml

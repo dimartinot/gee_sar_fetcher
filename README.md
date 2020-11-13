@@ -6,13 +6,15 @@ Access Google's multi-petabytes of SAR Imagery data from your python code with *
 This enables quick data analysis of GRD images to get better insights of the temporal dimension in SAR data without having to bother with essential but potentially time-consuming steps such as coregistration or calibration. 
 
 Compatible with python 3.
+
 [![Documentation Status](https://readthedocs.org/projects/gee-sar-fetcher/badge/?version=latest)](https://gee-sar-fetcher.readthedocs.io/en/latest/?badge=latest)
 [![PyPI version](https://badge.fury.io/py/geesarfetcher.svg)](https://badge.fury.io/py/geesarfetcher)
+
 ## Usage
 ### Python Import
-The main function of this library is the ``fetcher`` function:
+The main function of this library is the ``fetch`` function:
 ```python
-from geesarfetcher import fetcher
+from geesarfetcher import fetch
 from datetime import date, timedelta
 
 fetch(
@@ -20,7 +22,9 @@ fetch(
     bottom_right = [-104.65140675742012, 41.81515375846025],
     start_date = date.today()-timedelta(days=15),
     end_date = date.today(),
-    ascending=False
+    ascending=False,
+    scale=10,
+    n_jobs=1
 ) # returns a dictionnary with access to the data through the 'stack' keyword and to its timestamps through the 'timestamps' keyword
 
 ```

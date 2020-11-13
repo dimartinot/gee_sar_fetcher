@@ -1,0 +1,22 @@
+language: python
+
+cache: pip
+
+dist: trusty
+
+python:
+  - "3.6"
+
+before_install:
+  - pip install -U pip
+  - python travis_setup.py
+
+install:
+  - pip install coveralls --use-feature=2020-resolver
+  - pip install oauth2client --use-feature=2020-resolver
+  - pip install -Iv certifi==2017.11.5
+  - pip install -e . --use-feature=2020-resolver 
+
+script:
+  - python setup.py test
+#  - coverage run --source=geesarfetcher/ setup.py test

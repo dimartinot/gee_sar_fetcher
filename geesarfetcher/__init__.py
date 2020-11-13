@@ -16,6 +16,7 @@ from geesarfetcher.utils import *
 from geesarfetcher.constants import ASCENDING, DESCENDING
 from geesarfetcher.filter import filter_sentinel1_data
 from geesarfetcher.fetcher import fetch_sentinel1_data
+from geesarfetcher.coordinates import populate_coordinates_dictionary
 
 warnings.simplefilter(action="ignore")
 ee.Initialize()
@@ -155,32 +156,10 @@ def fetch(
         Parallel(n_jobs=n_jobs, require='sharedmem')(delayed(_get_zone_between_dates)(sub_start_date, sub_end_date, polygon, scale, orbit) for sub_start_date, sub_end_date in date_intervals)
 
         dictified_vals = [dict(zip(headers, values)) for values in vals]
-
-        for entry in dictified_vals:
-            lat = entry["latitude"]
-            lon = entry["longitude"]
-
-            new_key = str(lat)+":"+str(lon)
-
-            if new_key in per_coord_dict:
-                # Retrieving measured value
-                per_coord_dict[new_key]["VV"].append(entry["VV"])
-                per_coord_dict[new_key]["VH"].append(entry["VH"])
-
-                tmstp = entry["time"]
-                per_coord_dict[new_key]["timestamps"].append(tmstp//1000)
-
-            else:
-                per_coord_dict[new_key] = {}
-                # Retrieving measured value
-                per_coord_dict[new_key]["lat"] = lat
-                per_coord_dict[new_key]["lon"] = lon
-                per_coord_dict[new_key]["VV"] = [entry["VV"]]
-                per_coord_dict[new_key]["VH"] = [entry["VH"]]
-                tmstp = entry["time"]
-
-                per_coord_dict[new_key]["timestamps"] = [tmstp//1000]
-
+        per_coord_dict = populate_coordinates_dictionary(
+                dictified_values=dictified_vals,
+                coordinates_dictionary=per_coord_dict,
+        )
 
     # per_coord_dict is a dictionnary matching to each coordinate key its values through time as well as its timestamps
 
@@ -209,7 +188,7 @@ def fetch(
         vv = []
         vh = []
         for timestamp in timestamps:
-        
+
             indexes = np.argwhere(
                 np.array([datetime.fromtimestamp(p_t).date() for p_t in pixel_value["timestamps"]]) == timestamp
             )

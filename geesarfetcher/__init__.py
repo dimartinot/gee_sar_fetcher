@@ -12,6 +12,8 @@ import numpy as np
 
 # LOCAL IMPORTS
 from geesarfetcher.utils import *
+from geesarfetcher.filter import filter_sentinel1_data
+from geesarfetcher.fetcher import fetch_sentinel1_data
 
 warnings.simplefilter(action="ignore")
 ee.Initialize()
@@ -81,22 +83,17 @@ def fetch(
     # retrieving the number of pixels per image
     try:
         polygon = ee.Geometry.Polygon(list_of_coordinates)
-        # Call collection of satellite images.
-        sentinel_1_roi = (ee.ImageCollection("COPERNICUS/S1_GRD")
-                          # Filter for images within a given date range.
-                          .filter(ee.Filter.date(date_intervals[0][0], date_intervals[-1][1]))
-                          # Filter for images that overlap with the assigned geometry.
-                          .filterBounds(polygon)
-                          # Filter orbit
-                          .filter(ee.Filter.listContains('transmitterReceiverPolarisation', 'VV'))
-                          .filter(ee.Filter.listContains('transmitterReceiverPolarisation', 'VH'))
-                          # Filter to get images collected in interferometric wide swath mode.
-                          .filter(ee.Filter.eq('instrumentMode', 'IW'))
-                          .filter(ee.Filter.eq('orbitProperties_pass', orbit))
-                          .filter(ee.Filter.eq('resolution_meters', 10))
-                          )
-        val_vv = sentinel_1_roi.select("VV").getRegion(
-            polygon, scale=10).getInfo()
+        sentinel_1_roi = filter_sentinel1_data(
+            start_date=date_intervals[0][0],
+            end_date=date_intervals[-1][1],
+            geometry=polygon,
+            orbit=orbit,
+        )
+        val_vv = (sentinel_1_roi
+                  .select("VV")
+                  .getRegion(polygon, scale=10)
+                  .getInfo()
+        )
 
     except Exception as e:
 
@@ -125,37 +122,18 @@ def fetch(
     for sub_start_date, sub_end_date in tqdm(date_intervals):
         for c in list_of_coordinates:
 
-            polygon = ee.Geometry.Polygon([
-                c
-            ])
+            polygon = ee.Geometry.Polygon([c])
             try:
-                # Call collection of satellite images.
-                sentinel_1_roi = (ee.ImageCollection("COPERNICUS/S1_GRD")
-                                  # Filter for images within a given date range.
-                                  .filter(ee.Filter.date(sub_start_date, sub_end_date))
-                                  # Filter for images that overlap with the assigned geometry.
-                                  .filterBounds(polygon)
-                                  # Filter orbit
-                                  .filter(ee.Filter.listContains('transmitterReceiverPolarisation', 'VV'))
-                                  .filter(ee.Filter.listContains('transmitterReceiverPolarisation', 'VH'))
-                                  # Filter to get images collected in interferometric wide swath mode.
-                                  .filter(ee.Filter.eq('instrumentMode', 'IW'))
-                                  .filter(ee.Filter.eq('orbitProperties_pass', orbit))
-                                  .filter(ee.Filter.eq('resolution_meters', 10))
-                                  )
-                val_vv = sentinel_1_roi.select(
-                    "VV").getRegion(polygon, scale=10).getInfo()
-                val_vh = sentinel_1_roi.select(
-                    "VH").getRegion(polygon, scale=10).getInfo()
-
-                val_header = val_vv[0] + ["VH"]
-                val = [
-                    val_vv[i] + [val_vh[i][val_vh[0].index("VH")]] for i in range(1, len(val_vv))
-                ]
-
+                val_header, val = fetch_sentinel1_data(
+                        start_date=sub_start_date,
+                        end_date=sub_end_date,
+                        geometry=polygon,
+                        orbit=orbit,
+                )
                 vals.extend(val)
             except Exception as e:
-                pass  # passing date, no data found for this time interval
+                print('ImproveMe! ("Passing date, no data found for this time interval")')
+                pass
 
     dictified_vals = [dict(zip(val_header, values)) for values in vals]
 
@@ -235,4 +213,3 @@ def fetch(
         }
     }
 
-    

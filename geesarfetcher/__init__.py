@@ -132,7 +132,8 @@ def fetch(
                 )
                 vals.extend(val)
             except Exception as e:
-                pass  # passing date, no data found for this time interval
+                print('ImproveMe! ("Passing date, no data found for this time interval")')
+                pass
 
     dictified_vals = [dict(zip(val_header, values)) for values in vals]
 

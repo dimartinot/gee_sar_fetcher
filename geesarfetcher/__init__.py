@@ -42,48 +42,87 @@ def fetch(
     ----------
     top_left : tuple of float, optional
         Top left coordinates (lon, lat) of the Region 
+
     bottom_right : tuple of float, optional
         Bottom right coordinates (lon, lat) of the Region
+
     coords : tuple of tuple of float or list of list of float, optional
-        If `top_left` and `bottom_right` are not specified, we expect `coords` to be a list (resp. tuple) of the form ``[top_left, bottom_right]`` (resp. ``(top_left, bottom_right)``)
+        If `top_left` and `bottom_right` are not specified, we expect `coords`
+        to be a list (resp. tuple) of the form ``[top_left, bottom_right]``
+        (resp. ``(top_left, bottom_right)``)
+
     start_date : datetime.datetime, optional
         First date of the time interval
+
     end_date : datetime.datetime, optional
         Last date of the time interval
+
     ascending : boolean, optional
         The trajectory to use when selecting data
+
     scale : int, optional
-        Scale parameters of the getRegion() function. Defaulting at ``20``, change it to change the scale of the final data points. The highest, the lower the spatial resolution. Should be at least ``10``.
+        Scale parameters of the getRegion() function. Defaulting at ``20``,
+        change it to change the scale of the final data points. The highest,
+        the lower the spatial resolution. Should be at least ``10``.
+
     n_jobs : int, optional
-        Set the parallelisation factor (number of threads) for the GEE data access process. Set to 1 if no parallelisation required. 
+        Set the parallelisation factor (number of threads) for the GEE data
+        access process. Set to 1 if no parallelisation required.
+
     Returns
     -------
     `dict`
         Dictionnary with two keys:
 
             ``"stacks"``
-                4-D array containing db intensity measure (`numpy.ndarray`), ``(height, width, time_series_length, pol_count)``
-            ``"coordinates"``
-                3-D array containg coordinates where ``[:,:,0]`` provides access to latitude and ``[:,:,1]`` provides access to longitude, (`numpy.ndarray`), ``(height, width, 2)``
-            ``"timestamps"``
-                list of acquisition timestamps of size (time_series_length,) (`list of str`)
-            ``"metadata"``
-                Dictionnary describing data for each axis of the stack and the coordinates
+                4-D array containing db intensity measure (`numpy.ndarray`),
+                ``(height, width, time_series_length, pol_count)``
 
+            ``"coordinates"``
+                3-D array containg coordinates where ``[:,:,0]`` provides
+                access to latitude and ``[:,:,1]`` provides access to
+                longitude, (`numpy.ndarray`), ``(height, width, 2)``
+
+            ``"timestamps"``
+                list of acquisition timestamps of size (time_series_length,)
+                (`list of str`)
+
+            ``"metadata"``
+                Dictionnary describing data for each axis of the stack and the
+                coordinates
     '''
 
     assert(coords is None or (
-        (type(coords) == list or type(coords) == tuple) and len(coords) == 2) and len(coords[0]) == len(coords[1]) and len(coords[0]) == 2)
-
-    assert((top_left is None and bottom_right is None)
-           or (type(top_left) == type(bottom_right) and (type(top_left) == tuple or type(top_left) == list))
-           and len(top_left) == len(bottom_right) and len(top_left) == 2)
-
+        (
+            type(coords) == list
+            or type(coords) == tuple
+        )
+        and len(coords) == 2)
+        and len(coords[0]) == len(coords[1])
+        and len(coords[0]) == 2
+    )
+    assert(
+            (
+                top_left is None
+                and bottom_right is None
+            )
+            or (
+                type(top_left) == type(bottom_right)
+                and (
+                    type(top_left) == tuple
+                    or type(top_left) == list)
+            )
+            and len(top_left) == len(bottom_right)
+            and len(top_left) == 2
+    )
     assert(start_date is not None)
     assert(end_date is not None)
     assert(end_date > start_date)
 
-    if top_left is not None and bottom_right is not None and coords is not None:
+    if (top_left is not None
+            and bottom_right is not None
+            and coords is not None
+    ):
         raise ValueError(
             "coords must be None if top_left and bottom_right are not None.")
 
@@ -106,7 +145,6 @@ def fetch(
         )
 
     except Exception as e:
-
         # If the area is found to be too big
         if (str(e) == "ImageCollection.getRegion: No bands in collection."):
             raise ValueError(
@@ -126,7 +164,6 @@ def fetch(
     ## FOR EACH DATE INTERVAL        ##
     ###################################
     print(f"Region sliced in {len(list_of_coordinates)} subregions and {len(date_intervals)} time intervals.")
-
 
     def _get_zone_between_dates(start_date, end_date, polygon, scale, orbit):
         try:
@@ -194,18 +231,13 @@ def fetch(
         return [vv, vh]
 
     indexes = [(i,j) for i in range(height) for j in range(width)]
-
-
     vals = Parallel(n_jobs=n_jobs)(
         delayed(_update_img)(pixel_values[i*width + j]) for (i,j) in tqdm(indexes)
     )
     img = np.array(vals).reshape((height, width, 2, len(timestamps)))
-
     lats, lons = tuple(zip(*[(p["lat"], p["lon"]) for p in pixel_values]))
-
     lats = np.array(lats).reshape((height, width))
     lons = np.array(lons).reshape((height, width))
-
     coordinates = np.zeros((height, width,2))
     coordinates[:,:,0] = lats
     coordinates[:,:,1] = lons

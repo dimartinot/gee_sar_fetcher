@@ -89,8 +89,11 @@ def fetch(
             geometry=polygon,
             orbit=orbit,
         )
-        val_vv = sentinel_1_roi.select("VV").getRegion(
-            polygon, scale=10).getInfo()
+        val_vv = (sentinel_1_roi
+                  .select("VV")
+                  .getRegion(polygon, scale=10)
+                  .getInfo()
+        )
 
     except Exception as e:
 
@@ -119,9 +122,7 @@ def fetch(
     for sub_start_date, sub_end_date in tqdm(date_intervals):
         for c in list_of_coordinates:
 
-            polygon = ee.Geometry.Polygon([
-                c
-            ])
+            polygon = ee.Geometry.Polygon([c])
             try:
                 val_header, val = fetch_sentinel1_data(
                         start_date=sub_start_date,
@@ -211,4 +212,3 @@ def fetch(
         }
     }
 
-    

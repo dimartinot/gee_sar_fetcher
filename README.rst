@@ -35,7 +35,9 @@ The main function of this library is the ``fetch`` function:
        bottom_right = [-104.65140675742012, 41.81515375846025],
        start_date = date.today()-timedelta(days=15),
        end_date = date.today(),
-       ascending=False
+       ascending=False,
+       scale=10,
+       n_jobs=1
    ) # returns a dictionnary with access to the data through the 'stack' keyword and to its timestamps through the 'timestamps' keyword
 
 Installation

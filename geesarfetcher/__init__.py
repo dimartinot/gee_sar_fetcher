@@ -57,10 +57,12 @@ def fetch(
 
             ``"stacks"``
                 4-D array containing db intensity measure (`numpy.ndarray`), ``(height, width, time_series_length, pol_count)``
+            ``"coordinates"``
+                3-D array containg coordinates where ``[:,:,0]`` provides access to latitude and ``[:,:,1]`` provides access to longitude, (`numpy.ndarray`), ``(height, width, 2)``
             ``"timestamps"``
                 list of acquisition timestamps of size (time_series_length,) (`list of str`)
             ``"metadata"``
-                Dictionnary describing data for each axis of the stack
+                Dictionnary describing data for each axis of the stack and the coordinates
 
     '''
 

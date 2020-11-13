@@ -1,5 +1,20 @@
 def populate_coordinates_dictionary(dictified_values, coordinates_dictionary):
     """
+    The dictionnary coordinates_dictionary' will be populated (or updated) with
+    values from the 'dictified_values' dictionnary
+
+    Parameters
+    ----------
+    dictified_values :
+        A dictionary of Sentinel-1 values
+
+    coordinates_dictionary :
+        A dictionnary matching to each coordinate key its values through time
+        as well as its timestamps.
+
+    Returns
+    -------
+    coordinates_dictionary
     """
     for entry in dictified_values:
         lat = entry["latitude"]

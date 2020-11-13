@@ -104,11 +104,6 @@ def fetch(
             geometry=polygon,
             orbit=orbit,
         )
-        _ = (sentinel_1_roi
-                  .select("VV")
-                  .getRegion(polygon, scale=scale)
-                  .getInfo()
-        )
 
     except Exception as e:
 

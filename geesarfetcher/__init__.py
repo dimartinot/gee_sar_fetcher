@@ -12,11 +12,16 @@ import numpy as np
 from joblib import Parallel, delayed
 
 # LOCAL IMPORTS
-from geesarfetcher.utils import *
-from geesarfetcher.constants import ASCENDING, DESCENDING
-from geesarfetcher.filter import filter_sentinel1_data
-from geesarfetcher.fetcher import fetch_sentinel1_data
-from geesarfetcher.coordinates import populate_coordinates_dictionary
+from .utils import make_polygon
+from .utils import tile_coordinates
+from .utils import define_image_shape
+from .utils import retrieve_max_pixel_count_from_pattern
+from .utils import cmp_coords
+from .utils import get_date_interval_array
+from .constants import ASCENDING, DESCENDING
+from .filter import filter_sentinel1_data
+from .fetcher import fetch_sentinel1_data
+from .coordinates import populate_coordinates_dictionary
 
 warnings.simplefilter(action="ignore")
 ee.Initialize()

@@ -169,20 +169,15 @@ def fetch(
 
     pixel_values = [per_coord_dict[k] for k in per_coord_dict.keys()]
     cmp_coordinates = cmp_to_key(cmp_coords)
-
-    # sorting pixels by latitude then longitude
-    pixel_values.sort(key=cmp_coordinates)
-
-    timestamps = np.unique([datetime.fromtimestamp(pixel_values[i]['timestamps'][j]).date() for i in range(len(pixel_values)) for j in range(len(pixel_values[i]['timestamps']))])
-
-    # counting pixels with common latitude until it changes to know the image width
-    width = 1
-    while pixel_values[width]["lat"] == pixel_values[0]["lat"]:
-        width += 1
-
-    # deducing the image height from its width
-    height = len(pixel_values) // width
-
+    pixel_values.sort(key=cmp_coordinates)  # sorting pixels by latitude then longitude
+    timestamps = np.unique(
+            [
+                datetime.fromtimestamp(pixel_values[i]['timestamps'][j]).date()
+                for i in range(len(pixel_values))
+                for j in range(len(pixel_values[i]['timestamps']))
+            ]
+    )
+    width, height = define_image_shape(pixel_values)
     print(f"Generating image of shape {height, width}")
     def _update_img(pixel_value):
         vv = []

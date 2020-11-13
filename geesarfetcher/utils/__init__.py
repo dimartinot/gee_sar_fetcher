@@ -125,6 +125,29 @@ def cmp_coords(a, b):
         return 0
 
 
+def define_image_shape(pixel_values):
+    """Define image shape based on number pixel and latitude values
+
+    Parameters
+    ----------
+    pixel_values :
+        Dictionnary with retrieved pixel values along with latitude and
+        longitude coordinates
+
+    Returns
+    -------
+    (with, height) :
+        A tuple with the width and height of the requested area of interest
+    """
+    # count pixels with common latitude until it changes to know the image width
+    width = 1
+    while pixel_values[width]["lat"] == pixel_values[0]["lat"]:
+        width += 1
+    # deduce the image height from its width
+    height = len(pixel_values) // width
+    return (width, height)
+
+
 def get_date_interval_array(start_date, end_date, day_timedelta=1):
     '''Initialize a list of days interval of size ``day_timedelta`` iteratively created between ``start_date`` and ``end_date``.
 

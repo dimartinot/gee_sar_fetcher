@@ -10,6 +10,7 @@ from tqdm import tqdm
 from functools import cmp_to_key
 import numpy as np
 from joblib import Parallel, delayed
+import os
 
 # LOCAL IMPORTS
 from geesarfetcher.utils import *
@@ -18,7 +19,9 @@ from geesarfetcher.filter import filter_sentinel1_data
 from geesarfetcher.fetcher import fetch_sentinel1_data
 
 warnings.simplefilter(action="ignore")
-ee.Initialize()
+
+if os.environ.get('READTHEDOCS') == False:
+    ee.Initialize()
 
 def fetch(
     top_left=None,

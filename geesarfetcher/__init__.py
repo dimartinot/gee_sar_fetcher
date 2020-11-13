@@ -13,6 +13,7 @@ import numpy as np
 # LOCAL IMPORTS
 from geesarfetcher.utils import *
 from geesarfetcher.filter import filter_sentinel1_data
+from geesarfetcher.fetcher import fetch_sentinel1_data
 
 warnings.simplefilter(action="ignore")
 ee.Initialize()
@@ -122,30 +123,12 @@ def fetch(
                 c
             ])
             try:
-                # Call collection of satellite images.
-                sentinel_1_roi = (ee.ImageCollection("COPERNICUS/S1_GRD")
-                                  # Filter for images within a given date range.
-                                  .filter(ee.Filter.date(sub_start_date, sub_end_date))
-                                  # Filter for images that overlap with the assigned geometry.
-                                  .filterBounds(polygon)
-                                  # Filter orbit
-                                  .filter(ee.Filter.listContains('transmitterReceiverPolarisation', 'VV'))
-                                  .filter(ee.Filter.listContains('transmitterReceiverPolarisation', 'VH'))
-                                  # Filter to get images collected in interferometric wide swath mode.
-                                  .filter(ee.Filter.eq('instrumentMode', 'IW'))
-                                  .filter(ee.Filter.eq('orbitProperties_pass', orbit))
-                                  .filter(ee.Filter.eq('resolution_meters', 10))
-                                  )
-                val_vv = sentinel_1_roi.select(
-                    "VV").getRegion(polygon, scale=10).getInfo()
-                val_vh = sentinel_1_roi.select(
-                    "VH").getRegion(polygon, scale=10).getInfo()
-
-                val_header = val_vv[0] + ["VH"]
-                val = [
-                    val_vv[i] + [val_vh[i][val_vh[0].index("VH")]] for i in range(1, len(val_vv))
-                ]
-
+                val_header, val = fetch_sentinel1_data(
+                        start_date=sub_start_date,
+                        end_date=sub_end_date,
+                        geometry=polygon,
+                        orbit=orbit,
+                )
                 vals.extend(val)
             except Exception as e:
                 pass  # passing date, no data found for this time interval

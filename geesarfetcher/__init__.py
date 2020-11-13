@@ -12,6 +12,7 @@ import numpy as np
 
 # LOCAL IMPORTS
 from geesarfetcher.utils import *
+from geesarfetcher.filter import filter_sentinel1_data
 
 warnings.simplefilter(action="ignore")
 ee.Initialize()
@@ -81,20 +82,12 @@ def fetch(
     # retrieving the number of pixels per image
     try:
         polygon = ee.Geometry.Polygon(list_of_coordinates)
-        # Call collection of satellite images.
-        sentinel_1_roi = (ee.ImageCollection("COPERNICUS/S1_GRD")
-                          # Filter for images within a given date range.
-                          .filter(ee.Filter.date(date_intervals[0][0], date_intervals[-1][1]))
-                          # Filter for images that overlap with the assigned geometry.
-                          .filterBounds(polygon)
-                          # Filter orbit
-                          .filter(ee.Filter.listContains('transmitterReceiverPolarisation', 'VV'))
-                          .filter(ee.Filter.listContains('transmitterReceiverPolarisation', 'VH'))
-                          # Filter to get images collected in interferometric wide swath mode.
-                          .filter(ee.Filter.eq('instrumentMode', 'IW'))
-                          .filter(ee.Filter.eq('orbitProperties_pass', orbit))
-                          .filter(ee.Filter.eq('resolution_meters', 10))
-                          )
+        sentinel_1_roi = filter_sentinel1_data(
+            start_date=date_intervals[0][0],
+            end_date=date_intervals[-1][1],
+            geometry=polygon,
+            orbit=orbit,
+        )
         val_vv = sentinel_1_roi.select("VV").getRegion(
             polygon, scale=10).getInfo()
 

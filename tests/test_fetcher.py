@@ -39,7 +39,8 @@ class TestFetcher(unittest.TestCase):
             bottom_right=SMALL_COORDS[2],
             start_date=datetime(year=2020, month=10, day=24),
             end_date=datetime(year=2020, month=11, day=2),
-            ascending=False)
+            ascending=False,
+            scale=10)
 
         self.assertTrue(isinstance(d, dict))
         self.assertTrue("timestamps" in list(d.keys())
@@ -54,7 +55,8 @@ class TestFetcher(unittest.TestCase):
             bottom_right=MED_COORDS[2],
             start_date=datetime(year=2020, month=10, day=24),
             end_date=datetime(year=2020, month=11, day=2),
-            ascending=False)
+            ascending=False,
+            scale=10)
 
         self.assertTrue(isinstance(d, dict))
         self.assertTrue("timestamps" in list(d.keys())
@@ -71,7 +73,8 @@ class TestFetcher(unittest.TestCase):
             "coords": [MED_COORDS[0],MED_COORDS[2]],
             "start_date": datetime(year=2020, month=10, day=24),
             "end_date": datetime(year=2020, month=11, day=2),
-            "ascending": False
+            "ascending": False,
+            "scale": 10
         }
         self.assertRaises(ValueError, fetch, **kwargs)
 

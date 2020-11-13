@@ -1,6 +1,6 @@
 """geesarfetcher"""
 
-__version__ = "0.1.1"
+__version__ = "0.2.0"
 
 # LIBRARY IMPORTS
 import ee
@@ -9,9 +9,11 @@ from datetime import datetime, date, timedelta
 from tqdm import tqdm
 from functools import cmp_to_key
 import numpy as np
+from joblib import Parallel, delayed
 
 # LOCAL IMPORTS
 from geesarfetcher.utils import *
+from geesarfetcher.constants import ASCENDING, DESCENDING
 from geesarfetcher.filter import filter_sentinel1_data
 from geesarfetcher.fetcher import fetch_sentinel1_data
 
@@ -24,7 +26,9 @@ def fetch(
     coords=None,
     start_date: datetime = date.today()-timedelta(days=365),
     end_date: datetime = date.today(),
-    ascending: bool = True
+    ascending: bool = True,
+    scale: int = 20,
+    n_jobs: int = 8
 ):
     '''Fetches SAR data in the form of a dictionnary with image data as well as timestamps
 
@@ -42,7 +46,10 @@ def fetch(
         Last date of the time interval
     ascending : boolean, optional
         The trajectory to use when selecting data
-
+    scale : int, optional
+        Scale parameters of the getRegion() function. Defaulting at ``20``, change it to change the scale of the final data points. The highest, the lower the spatial resolution. Should be at least ``10``.
+    n_jobs : int, optional
+        Set the parallelisation factor (number of threads) for the GEE data access process. Set to 1 if no parallelisation required. 
     Returns
     -------
     `dict`
@@ -73,7 +80,7 @@ def fetch(
             "coords must be None if top_left and bottom_right are not None.")
 
     date_intervals = get_date_interval_array(start_date, end_date)
-    orbit = "ASCENDING" if ascending else "DESCENDING"
+    orbit = ASCENDING if ascending else DESCENDING
 
     if (top_left is not None):
         list_of_coordinates = [make_polygon(top_left, bottom_right)]
@@ -89,9 +96,9 @@ def fetch(
             geometry=polygon,
             orbit=orbit,
         )
-        val_vv = (sentinel_1_roi
+        _ = (sentinel_1_roi
                   .select("VV")
-                  .getRegion(polygon, scale=10)
+                  .getRegion(polygon, scale=scale)
                   .getInfo()
         )
 
@@ -110,59 +117,68 @@ def fetch(
                 total_count_of_pixels, coords)
 
     per_coord_dict = {}
+
     ###################################
     ## RETRIEVING COORDINATES VALUES ##
     ## FOR EACH DATE INTERVAL        ##
     ###################################
-    print(
-        f"Region sliced in {len(list_of_coordinates)} subregions and {len(date_intervals)} time intervals.")
+    print(f"Region sliced in {len(list_of_coordinates)} subregions and {len(date_intervals)} time intervals.")
 
-    vals = []
-    val_header = []
-    for sub_start_date, sub_end_date in tqdm(date_intervals):
-        for c in list_of_coordinates:
 
-            polygon = ee.Geometry.Polygon([c])
-            try:
-                val_header, val = fetch_sentinel1_data(
-                        start_date=sub_start_date,
-                        end_date=sub_end_date,
-                        geometry=polygon,
-                        orbit=orbit,
-                )
-                vals.extend(val)
-            except Exception as e:
-                print('ImproveMe! ("Passing date, no data found for this time interval")')
-                pass
+    def _get_zone_between_dates(start_date, end_date, polygon, scale, orbit):
+        try:
+            val_header, val = fetch_sentinel1_data(
+                start_date=start_date,
+                end_date=end_date,
+                geometry=polygon,
+                orbit=orbit,
+                scale=scale
+            )
+            vals.extend(val)
 
-    dictified_vals = [dict(zip(val_header, values)) for values in vals]
+            if len(headers) == 0:
+                headers.extend(val_header)
+            vals.extend(val)
+        except Exception as e:
+            pass
 
-    for entry in dictified_vals:
-        lat = entry["latitude"]
-        lon = entry["longitude"]
+    for c in tqdm(list_of_coordinates):
+        vals = []
+        headers = []
+        polygon = ee.Geometry.Polygon([
+            c
+        ])
+        # Fill vals with values.
+        # TODO: Evaluate eventuality to remove shared memory requirement and to exploit automatic list building from Joblib
+        Parallel(n_jobs=n_jobs, require='sharedmem')(delayed(_get_zone_between_dates)(sub_start_date, sub_end_date, polygon, scale, orbit) for sub_start_date, sub_end_date in date_intervals)
 
-        new_key = str(lat)+":"+str(lon)
+        dictified_vals = [dict(zip(headers, values)) for values in vals]
 
-        if new_key in per_coord_dict:
-            # Retrieving measured value
-            per_coord_dict[new_key]["VV"].append(entry["VV"])
-            per_coord_dict[new_key]["VH"].append(entry["VH"])
+        for entry in dictified_vals:
+            lat = entry["latitude"]
+            lon = entry["longitude"]
 
-            datetime = entry["id"].split("_")[4]
+            new_key = str(lat)+":"+str(lon)
 
-            per_coord_dict[new_key]["timestamps"].append(datetime[:8])
+            if new_key in per_coord_dict:
+                # Retrieving measured value
+                per_coord_dict[new_key]["VV"].append(entry["VV"])
+                per_coord_dict[new_key]["VH"].append(entry["VH"])
 
-        else:
-            per_coord_dict[new_key] = {}
-            # Retrieving measured value
-            per_coord_dict[new_key]["lat"] = lat
-            per_coord_dict[new_key]["lon"] = lon
-            per_coord_dict[new_key]["VV"] = [entry["VV"]]
-            per_coord_dict[new_key]["VH"] = [entry["VH"]]
+                tmstp = entry["time"]
+                per_coord_dict[new_key]["timestamps"].append(tmstp//1000)
 
-            datetime = entry["id"].split("_")[4]
+            else:
+                per_coord_dict[new_key] = {}
+                # Retrieving measured value
+                per_coord_dict[new_key]["lat"] = lat
+                per_coord_dict[new_key]["lon"] = lon
+                per_coord_dict[new_key]["VV"] = [entry["VV"]]
+                per_coord_dict[new_key]["VH"] = [entry["VH"]]
+                tmstp = entry["time"]
 
-            per_coord_dict[new_key]["timestamps"] = [datetime[:8]]
+                per_coord_dict[new_key]["timestamps"] = [tmstp//1000]
+
 
     # per_coord_dict is a dictionnary matching to each coordinate key its values through time as well as its timestamps
 
@@ -176,9 +192,7 @@ def fetch(
     # sorting pixels by latitude then longitude
     pixel_values.sort(key=cmp_coordinates)
 
-    timestamps = np.unique([pixel_values[i]['timestamps'][j] for i in range(
-        len(pixel_values)) for j in range(len(pixel_values[i]['timestamps']))])
-    date_count = len(timestamps)
+    timestamps = np.unique([datetime.fromtimestamp(pixel_values[i]['timestamps'][j]).date() for i in range(len(pixel_values)) for j in range(len(pixel_values[i]['timestamps']))])
 
     # counting pixels with common latitude until it changes to know the image width
     width = 1
@@ -188,28 +202,54 @@ def fetch(
     # deducing the image height from its width
     height = len(pixel_values) // width
 
-    img = np.zeros((height, width) + (2, date_count))  # VV & VH bands
+    print(f"Generating image of shape {height, width}")
+    def _update_img(pixel_value):
+        vv = []
+        vh = []
+        for timestamp in timestamps:
+        
+            indexes = np.argwhere(
+                np.array([datetime.fromtimestamp(p_t).date() for p_t in pixel_value["timestamps"]]) == timestamp
+            )
+            vv.append(np.nanmean(
+                np.array(pixel_value["VV"], dtype=float)[indexes]))
+            vh.append(np.nanmean(
+                np.array(pixel_value["VH"], dtype=float)[indexes]))
+        return [vv, vh]
 
-    for i in range(height):
-        for j in range(width):
-            for t, timestamp in enumerate(timestamps):
-                indexes = np.argwhere(
-                    np.array(pixel_values[i*width + j]
-                             ["timestamps"]) == timestamp
-                )
-                img[i, j, 0, t] = np.nanmean(
-                    np.array(pixel_values[i*width + j]["VV"], dtype=float)[indexes])
-                img[i, j, 1, t] = np.nanmean(
-                    np.array(pixel_values[i*width + j]["VH"], dtype=float)[indexes])
+    indexes = [(i,j) for i in range(height) for j in range(width)]
+
+
+    vals = Parallel(n_jobs=n_jobs)(
+        delayed(_update_img)(pixel_values[i*width + j]) for (i,j) in tqdm(indexes)
+    )
+    img = np.array(vals).reshape((height, width, 2, len(timestamps)))
+
+    lats, lons = tuple(zip(*[(p["lat"], p["lon"]) for p in pixel_values]))
+
+    lats = np.array(lats).reshape((height, width))
+    lons = np.array(lons).reshape((height, width))
+
+    coordinates = np.zeros((height, width,2))
+    coordinates[:,:,0] = lats
+    coordinates[:,:,1] = lons
 
     return {
         "stack": img,
         "timestamps": timestamps,
+        "coordinates": coordinates,
         "metadata": {
-            "axis_0": "height",
-            "axis_1": "width",
-            "axis_2": "polarisations (0:VV, 1:VH)",
-            "axis_3": "timestamps"
+            "stack": {
+                "axis_0": "height",
+                "axis_1": "width",
+                "axis_2": "polarisations (0:VV, 1:VH)",
+                "axis_3": "timestamps"
+            },
+            "coordinates": {
+                "axis_0": "height",
+                "axis_1": "width",
+                "axis_2": "0:latitude; 1:longitude",
+            }
         }
     }
 

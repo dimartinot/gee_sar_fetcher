@@ -52,15 +52,15 @@ def tile_coordinates(total_count_of_pixels, coordinates, max_gee=MAX_GEE_PIXELS_
     '''
     assert(len(coordinates) == 2 or len(coordinates) == 5)
 
-    if (total_count_of_pixels < max_gee):
-        return coordinates
-
     list_of_coordinates = []
 
     if len(coordinates) == 2:
         tmp_c = make_polygon(coordinates[0], coordinates[1])
     else:
         tmp_c = coordinates
+
+    if (total_count_of_pixels < max_gee):
+        return [tmp_c]
 
     # The coordinate polygon will be tiled in `grid_length * grid_length` sub-Polygons
     grid_length = int(math.ceil(math.sqrt(total_count_of_pixels/max_gee)))

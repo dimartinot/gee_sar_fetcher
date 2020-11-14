@@ -20,6 +20,11 @@ def fetch_sentinel1_data(start_date, end_date, geometry, scale, orbit=ASCENDING)
     orbit : str, optional
         Defines the orbit to set for the data retrieval process
 
+    Returns
+    -------
+    (val_header, val) : tuple
+        val_header corresponds to the ``list of str`` describing the fields of the val array. The val array is a ``list`` of data records, each represented as a ``list`` of the same size as the val_header array.
+
     '''
     sentinel_1_roi = filter_sentinel1_data(
             start_date=start_date,

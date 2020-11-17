@@ -181,7 +181,6 @@ def fetch(
 
             if len(headers) == 0:
                 headers.extend(val_header)
-            vals.extend(val)
         except Exception as e:
             pass
 

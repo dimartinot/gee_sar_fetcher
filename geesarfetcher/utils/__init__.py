@@ -118,9 +118,9 @@ def cmp_coords(a, b):
         **-1** if ``a > b``, **1** if ``a < b``, **0** if ``a == b``
     '''
     if a["lat"] != b["lat"]:
-        return 1 if a["lat"] > b["lat"] else -1
+        return 1 if a["lat"] < b["lat"] else -1
     elif a["lon"] != b["lon"]:
-        return 1 if a["lon"] > b["lon"] else -1
+        return 1 if a["lon"] < b["lon"] else -1
     else:
         return 0
 

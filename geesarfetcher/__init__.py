@@ -10,6 +10,7 @@ from tqdm import tqdm
 from functools import cmp_to_key
 import numpy as np
 from joblib import Parallel, delayed
+import os
 
 # LOCAL IMPORTS
 from .utils import make_polygon
@@ -24,7 +25,10 @@ from .fetcher import fetch_sentinel1_data
 from .coordinates import populate_coordinates_dictionary
 
 warnings.simplefilter(action="ignore")
-ee.Initialize()
+warnings.filterwarnings('ignore')
+
+if os.environ.get('READTHEDOCS') == None:
+    ee.Initialize()
 
 def fetch(
     top_left=None,
@@ -137,13 +141,13 @@ def fetch(
     # retrieving the number of pixels per image
     try:
         polygon = ee.Geometry.Polygon(list_of_coordinates)
-        sentinel_1_roi = filter_sentinel1_data(
+        sentinel_1_roi = fetch_sentinel1_data(
             start_date=date_intervals[0][0],
             end_date=date_intervals[-1][1],
             geometry=polygon,
+            scale=scale,
             orbit=orbit,
         )
-
     except Exception as e:
         # If the area is found to be too big
         if (str(e) == "ImageCollection.getRegion: No bands in collection."):
@@ -156,7 +160,6 @@ def fetch(
         else:
             list_of_coordinates = tile_coordinates(
                 total_count_of_pixels, coords)
-
     per_coord_dict = {}
 
     ###################################
@@ -204,6 +207,7 @@ def fetch(
     ## BUILDING TEMPORAL IMAGES ##
     ##############################
 
+
     pixel_values = [per_coord_dict[k] for k in per_coord_dict.keys()]
     cmp_coordinates = cmp_to_key(cmp_coords)
     pixel_values.sort(key=cmp_coordinates)  # sorting pixels by latitude then longitude
@@ -214,33 +218,49 @@ def fetch(
                 for j in range(len(pixel_values[i]['timestamps']))
             ]
     )
-    width, height = define_image_shape(pixel_values)
+
+    # Creating matrix of coordinates
+    lats, lons = tuple(zip(*[(p["lat"], p["lon"]) for p in pixel_values]))
+    
+    unique_lats, lats_count = np.unique(lats, return_counts=True)
+    unique_lats = unique_lats[::-1]
+    lats_dict = {unique_lats[i]: i for i in range(len(unique_lats))}
+
+    unique_lons, lons_count = np.unique(lons, return_counts=True)
+    lons_dict = {unique_lons[i]: i for i in range(len(unique_lons))}
+
+    width, height = len(unique_lons), len(unique_lats)
+    coordinates = [[lat, lon] for lon in unique_lons for lat in unique_lats]
+    coordinates = np.array(coordinates).reshape(height, width, 2)
+
+    img = np.full((height, width, 2, len(timestamps)),fill_value=np.nan)
+
     print(f"Generating image of shape {height, width}")
-    def _update_img(pixel_value):
+    for p in tqdm(pixel_values):
+        x, y = lats_dict[p["lat"]], lons_dict[p["lon"]]
         vv = []
         vh = []
         for timestamp in timestamps:
 
             indexes = np.argwhere(
-                np.array([datetime.fromtimestamp(p_t).date() for p_t in pixel_value["timestamps"]]) == timestamp
+                np.array([datetime.fromtimestamp(p_t).date() for p_t in p["timestamps"]]) == timestamp
             )
             vv.append(np.nanmean(
-                np.array(pixel_value["VV"], dtype=float)[indexes]))
+                np.array(p["VV"], dtype=float)[indexes]))
             vh.append(np.nanmean(
-                np.array(pixel_value["VH"], dtype=float)[indexes]))
-        return [vv, vh]
+                np.array(p["VH"], dtype=float)[indexes]))
 
-    indexes = [(i,j) for i in range(height) for j in range(width)]
-    vals = Parallel(n_jobs=n_jobs)(
-        delayed(_update_img)(pixel_values[i*width + j]) for (i,j) in tqdm(indexes)
-    )
-    img = np.array(vals).reshape((height, width, 2, len(timestamps)))
-    lats, lons = tuple(zip(*[(p["lat"], p["lon"]) for p in pixel_values]))
-    lats = np.array(lats).reshape((height, width))
-    lons = np.array(lons).reshape((height, width))
-    coordinates = np.zeros((height, width,2))
-    coordinates[:,:,0] = lats
-    coordinates[:,:,1] = lons
+        img[x, y, 0, :] = vv
+        img[x, y, 1, :] = vh
+
+    # we aim to find the couple of (lats, lons) that generates the biggest covered area mongst the retrieved data (pixel wise)
+
+
+    #lats = np.array(lats).reshape((height, width))
+    #lons = np.array(lons).reshape((height, width))
+    #coordinates = np.zeros((height, width,2))
+    #coordinates[:,:,0] = lats
+    #coordinates[:,:,1] = lons
 
     return {
         "stack": img,

@@ -63,6 +63,20 @@ class TestFetcher(unittest.TestCase):
                         and len(d["timestamps"]) == 2)
         self.assertTrue(d["stack"].shape == (949, 1368, 2, 2))
 
+    def test_big_scale_download(self):
+        '''Tests download with a large scale and missing pixel values
+        '''
+        d = fetch(
+            top_left = [5.26948161, 49.97440374],
+            bottom_right = [8.07913236, 47.90621773],
+            start_date = datetime(2019, 6, 1),
+            end_date = datetime(2019, 6, 3),
+            ascending=False,
+            scale=1000,
+        )
+        self.assertEqual(d["stack"].shape, (231, 312, 2, 1))
+        self.assertEqual(d["stack"][100,100,0,0], -11.805720298590167)
+
     def test_exceptions(self):
         '''Tests raised exceptions
         '''

@@ -1,6 +1,6 @@
 """geesarfetcher"""
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 # LIBRARY IMPORTS
 import ee
@@ -168,7 +168,7 @@ def fetch_point(
             ``"metadata"``
                 Dictionnary describing data for each axis of the stack and the
                 coordinates
-                
+
     '''
 
     _fetch_point_assertions(coords, start_date, end_date, ascending, scale, n_jobs)

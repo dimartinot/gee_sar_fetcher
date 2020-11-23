@@ -32,7 +32,7 @@ fetch(
 To fetch over a single point, the process is similar to the difference that we use another function, called ``fetch_point`` and only provide a single coordinates tuple rather than either two or 5 tuples for the area query.
 
 ```python
-from geesarfetcher import fetcher
+from geesarfetcher import fetch_point
 from datetime import date, timedelta
 
 fetch_point(

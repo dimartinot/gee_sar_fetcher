@@ -6,13 +6,11 @@ This tool is useful to download large areas over long period of time by successi
 
 .. toctree::
    :caption: Table of Contents
-   :maxdepth: 2
-   :numbered:
+   :maxdepth: 3
 
-   GEE SAR Fetcher <pages/introduction>
-   Main <pages/main>
-   Utils <pages/utils>
-
+   Introduction <pages/introduction>
+   Documentation <pages/documentation>
+   
 Indices and tables
 ==================
 

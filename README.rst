@@ -40,6 +40,21 @@ The main function of this library is the ``fetch`` function:
        n_jobs=1
    ) # returns a dictionnary with access to the data through the 'stack' keyword and to its timestamps through the 'timestamps' keyword
 
+To fetch over a single point, the process is similar to the difference that we use another function, called ``fetch_point`` and only provide a single coordinates tuple rather than either two or 5 tuples for the area query.
+
+.. code:: python
+
+   from geesarfetcher import fetcher
+   from datetime import date, timedelta
+
+   fetch_point(
+      coords = [-104.88572453696113, 41.884778748257574],
+      start_date = date.today()-timedelta(days=15),
+      end_date = date.today(),
+      ascending=False,
+      scale=10
+   )
+
 Installation
 ------------
 

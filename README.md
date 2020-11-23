@@ -29,6 +29,21 @@ fetch(
 
 ```
 
+To fetch over a single point, the process is similar to the difference that we use another function, called ``fetch_point`` and only provide a single coordinates tuple rather than either two or 5 tuples for the area query.
+
+```python
+from geesarfetcher import fetcher
+from datetime import date, timedelta
+
+fetch_point(
+    coords = [-104.88572453696113, 41.884778748257574],
+    start_date = date.today()-timedelta(days=15),
+    end_date = date.today(),
+    ascending=False,
+    scale=10
+)
+```
+
 ## Installation
 Access to Google Earth Engine is conditioned by the obtention of a [GEE account](https://earthengine.google.com/).
 Once created, you can install the **geesarfetcher** API and register an identifying token for your Python working environment using the following commands:

@@ -47,3 +47,23 @@ def fetch_sentinel1_data(start_date, end_date, geometry, scale, orbit=ASCENDING)
             val_vv[i][1:] + [val_vh[i][val_vh[0].index(VH)]] for i in range(1, len(val_vv))
     ]
     return (val_header, val)
+
+
+
+def _get_zone_between_dates(start_date, end_date, polygon, scale, orbit, headers):
+    try:
+        val_header, val = fetch_sentinel1_data(
+            start_date=start_date,
+            end_date=end_date,
+            geometry=polygon,
+            orbit=orbit,
+            scale=scale,
+        )
+
+        if len(headers) == 0:
+            headers.extend(val_header)
+        
+        return val
+
+    except Exception as e:
+        pass

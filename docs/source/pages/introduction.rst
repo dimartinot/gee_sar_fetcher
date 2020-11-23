@@ -1,6 +1,3 @@
-GEE SAR Fetcher
-===============
-
 An easy-to-use Python library to download SAR GRD imagery from Google
 Earth Engine.
 
@@ -20,10 +17,12 @@ Compatible with python 3.
 Usage
 -----
 
-Python Import
-~~~~~~~~~~~~~
+The library allows the user to retrieve GEE Sar data eiter over a rectangular area or over a single coordinates tuple.
 
-The main function of this library is the ``fetch`` function:
+Fetch data over an area
+~~~~~~~~~~~~~~~~~~~~~~~
+
+The function to call in order to retrieve data over an area is the ``fetch`` function:
 
 .. code:: python
 
@@ -39,6 +38,60 @@ The main function of this library is the ``fetch`` function:
        scale=10,
        n_jobs=8
    ) # returns a dictionnary with access to the data through the 'stack' keyword, to its timestamps through the 'timestamps' keyword and to pixels' coordinates with 'coordinates' key.
+
+It returns a ``dict`` object with 4 keys:
+   ``"stacks"``
+         4-D array containing db intensity measure (`numpy.ndarray`),
+         ``(height, width, pol_count, time_series_length)`` 
+
+   ``"coordinates"``
+         3-D array containg coordinates where ``[:,:,0]`` provides
+         access to latitude and ``[:,:,1]`` provides access to
+         longitude, (`numpy.ndarray`), ``(height, width, 2)``
+
+   ``"timestamps"``
+         list of acquisition timestamps of size (time_series_length,)
+         (`list of str`)
+
+   ``"metadata"``
+         Dictionnary describing data for each axis of the stack and the
+         coordinates
+
+Fetch data for a single point
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To fetch over a single point, the process is similar to the difference that we use another function, called ``fetch_point`` and only provide a single coordinates tuple rather than either two or 5 tuples for the area query.
+
+.. code:: python
+
+   from geesarfetcher import fetcher
+   from datetime import date, timedelta
+
+   fetch_point(
+      coords = [-104.88572453696113, 41.884778748257574],
+      start_date = date.today()-timedelta(days=15),
+      end_date = date.today(),
+      ascending=False,
+      scale=10
+   )
+
+For data consistency, the returned object is of the same nature as with the ``fetch`` method, i.e a ``dict`` with 4 keys:
+   ``"stacks"``
+         4-D array containing db intensity measure (`numpy.ndarray`),
+         ``(1, 1, pol_count, time_series_length)`` 
+
+   ``"coordinates"``
+         3-D array containg coordinates where ``[:,:,0]`` provides
+         access to latitude and ``[:,:,1]`` provides access to
+         longitude, (`numpy.ndarray`), ``(1, 1, 2)``
+
+   ``"timestamps"``
+         list of acquisition timestamps of size (time_series_length,)
+         (`list of str`)
+
+   ``"metadata"``
+         Dictionnary describing data for each axis of the stack and the
+         coordinates
 
 Installation
 ------------

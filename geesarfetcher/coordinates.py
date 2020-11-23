@@ -1,14 +1,14 @@
-def populate_coordinates_dictionary(dictified_values, coordinates_dictionary):
+def populate_coordinates_dictionary(dictified_values, coordinates_dictionary={}):
     """
     The dictionnary coordinates_dictionary' will be populated (or updated) with
     values from the 'dictified_values' dictionnary
 
     Parameters
     ----------
-    dictified_values :
+    dictified_values : dict
         A dictionary of Sentinel-1 values
 
-    coordinates_dictionary :
+    coordinates_dictionary : dict
         A dictionnary matching to each coordinate key its values through time
         as well as its timestamps.
 

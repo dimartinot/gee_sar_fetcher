@@ -1,5 +1,6 @@
-from geesarfetcher import fetch
+from geesarfetcher import fetch, fetch_point
 import unittest
+import numpy as np
 from datetime import datetime, date, timedelta
 import warnings
 warnings.simplefilter(action="ignore")
@@ -62,6 +63,59 @@ class TestFetcher(unittest.TestCase):
         self.assertTrue("timestamps" in list(d.keys())
                         and len(d["timestamps"]) == 2)
         self.assertTrue(d["stack"].shape == (949, 1368, 2, 2))
+
+    def test_big_scale_download(self):
+        '''Tests download with a large scale and missing pixel values
+        '''
+        d = fetch(
+            top_left = [5.26948161, 49.97440374],
+            bottom_right = [8.07913236, 47.90621773],
+            start_date = datetime(2019, 6, 1),
+            end_date = datetime(2019, 6, 3),
+            ascending=False,
+            scale=1000,
+        )
+        self.assertEqual(d["stack"].shape, (231, 312, 2, 1))
+        self.assertEqual(d["stack"][100,100,0,0], -11.805720298590167)
+
+    def test_fetch_point_small_scale(self):
+        '''Tests fetch_point method with a relative small scale of 10
+        '''
+        d = fetch_point(
+            coords = [-104.88572453696113, 41.884778748257574],
+            start_date=datetime(year=2020, month=10, day=24),
+            end_date=datetime(year=2020, month=11, day=2),
+            ascending=False,
+            scale=10
+        )
+        self.assertTrue(d['stack'].shape == (1,1,2,2))
+        self.assertTrue(np.round(d['stack'][0,0,0,0] - (-15.11937733), 2) == 0.0)
+
+    def test_fetch_point_med_scale(self):
+        '''Tests fetch_point method with a relative medium scale of 100
+        '''
+        d = fetch_point(
+            coords = [-104.88572453696113, 41.884778748257574],
+            start_date=datetime(year=2020, month=10, day=24),
+            end_date=datetime(year=2020, month=11, day=2),
+            ascending=False,
+            scale=100
+        )
+        self.assertTrue(d['stack'].shape == (1,1,2,2))
+        self.assertTrue(np.round(d['stack'][0,0,0,0] - (-15.04562971), 2) == 0.0)
+
+    def test_fetch_point_med_scale(self):
+        '''Tests fetch_point method with a relative medium scale of 100
+        '''
+        d = fetch_point(
+            coords = [-104.88572453696113, 41.884778748257574],
+            start_date=datetime(year=2020, month=10, day=24),
+            end_date=datetime(year=2020, month=11, day=2),
+            ascending=False,
+            scale=1000
+        )
+        self.assertTrue(d['stack'].shape == (1,1,2,2))
+        self.assertTrue(np.round(d['stack'][0,0,0,0] - (-13.21006906), 2) == 0.0)
 
     def test_exceptions(self):
         '''Tests raised exceptions

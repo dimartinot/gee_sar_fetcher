@@ -18,8 +18,8 @@ from geesarfetcher import fetch
 from datetime import date, timedelta
 
 fetch(
-    top_left = [-104.77431630331856, 41.729889598264826], 
-    bottom_right = [-104.65140675742012, 41.81515375846025],
+    top_left = [-104.77431630331856, 41.81515375846025], 
+    bottom_right = [-104.65140675742012, 41.729889598264826],
     start_date = date.today()-timedelta(days=15),
     end_date = date.today(),
     ascending=False,

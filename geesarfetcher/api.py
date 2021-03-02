@@ -220,7 +220,7 @@ def generate_image(timestamps, pixel_values):
     lons_dict = {unique_lons[i]: i for i in range(len(unique_lons))}
 
     width, height = len(unique_lons), len(unique_lats)
-    coordinates = [[lat, lon] for lon in unique_lons for lat in unique_lats]
+    coordinates = [[lat, lon] for lat in unique_lats for lon in unique_lons]
     coordinates = np.array(coordinates).reshape(height, width, 2)
 
     img = np.full((height, width, 2, len(timestamps)),fill_value=np.nan)

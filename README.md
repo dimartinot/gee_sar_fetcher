@@ -1,9 +1,11 @@
 # GEE SAR Fetcher
+
 An easy-to-use Python library to download SAR GRD imagery from Google Earth Engine.
 
 ## Introduction
-Access Google's multi-petabytes of SAR Imagery data from your python code with *no dimension restraint*. Simply supply coordinates, a time interval and obtain a stack of Sentinel-1 preprocessed PolSAR images.
-This enables quick data analysis of GRD images to get better insights of the temporal dimension in SAR data without having to bother with essential but potentially time-consuming steps such as coregistration or calibration. 
+
+Access Google's multi-petabytes of SAR Imagery data from your python code with _no dimension restraint_. Simply supply coordinates, a time interval and obtain a stack of Sentinel-1 preprocessed PolSAR images.
+This enables quick data analysis of GRD images to get better insights of the temporal dimension in SAR data without having to bother with essential but potentially time-consuming steps such as coregistration or calibration.
 
 Compatible with python 3.
 
@@ -11,14 +13,17 @@ Compatible with python 3.
 [![PyPI version](https://badge.fury.io/py/geesarfetcher.svg)](https://badge.fury.io/py/geesarfetcher)
 
 ## Usage
+
 ### Python Import
-The main function of this library is the ``fetch`` function:
+
+The main function of this library is the `fetch` function:
+
 ```python
 from geesarfetcher import fetch
 from datetime import date, timedelta
 
-fetch(
-    top_left = [-104.77431630331856, 41.81515375846025], 
+d = fetch(
+    top_left = [-104.77431630331856, 41.81515375846025],
     bottom_right = [-104.65140675742012, 41.729889598264826],
     start_date = date.today()-timedelta(days=15),
     end_date = date.today(),
@@ -29,7 +34,9 @@ fetch(
 
 ```
 
-To fetch over a single point, the process is similar to the difference that we use another function, called ``fetch_point`` and only provide a single coordinates tuple rather than either two or 5 tuples for the area query.
+The fetch method loads the full data stack in memory. For large areas or long time interval, using the `fetch_and_save` alternative, that progressively saves SAR Images as GeoTIFF. They can then be opened in any QGIS-like software as a normal geocoded .tiff file. For more info, see [link...](https://gee-sar-fetcher.readthedocs.io/en/latest/pages/documentation.html#geesarfetcher.fetch_and_save)
+
+To fetch over a single point, the process is similar to the difference that we use another function, called `fetch_point` and only provide a single coordinates tuple rather than either two or 5 tuples for the area query.
 
 ```python
 from geesarfetcher import fetch_point
@@ -45,8 +52,10 @@ fetch_point(
 ```
 
 ## Installation
+
 Access to Google Earth Engine is conditioned by the obtention of a [GEE account](https://earthengine.google.com/).
 Once created, you can install the **geesarfetcher** API and register an identifying token for your Python working environment using the following commands:
+
 ```
 pip install geesarfetcher
 earthengine authenticate
@@ -58,4 +67,5 @@ Pull requests are welcome. For major changes, please open an issue first to disc
 Please make sure to update tests as appropriate.
 
 ## License
+
 [MIT](https://choosealicense.com/licenses/mit/)

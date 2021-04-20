@@ -21,11 +21,11 @@ sys.setrecursionlimit(1500)
 # -- Project information -----------------------------------------------------
 
 project = 'GEE SAR Fetcher'
-copyright = '2020, Thomas Di Martino'
+copyright = '2021, Thomas Di Martino'
 author = 'Thomas Di Martino'
 
 # The full version, including alpha/beta/rc tags
-release = '0.1.0'
+release = '0.3.2'
 
 
 # -- General configuration ---------------------------------------------------

@@ -127,3 +127,4 @@ dmypy.json
 .vscode
 README.rst
 .pypi_info.md
+test_procedure.md

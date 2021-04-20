@@ -1,8 +1,10 @@
-from geesarfetcher import fetch, fetch_point
+from geesarfetcher import fetch, fetch_point, fetch_and_save
 import unittest
 import numpy as np
 from datetime import datetime, date, timedelta
 import warnings
+import time
+import os, shutil
 warnings.simplefilter(action="ignore")
 
 # SMALL COORDS
@@ -63,6 +65,26 @@ class TestFetcher(unittest.TestCase):
         self.assertTrue("timestamps" in list(d.keys())
                         and len(d["timestamps"]) == 2)
         self.assertTrue(d["stack"].shape == (949, 1368, 2, 2))
+
+    def test_medium_download_to_disk(self):
+        '''Tests download with a medium region (at least one cut) and small time interval
+        '''
+        
+        shutil.rmtree('tmp', ignore_errors=True)
+        os.mkdir("tmp")
+
+        fetch_and_save(
+            save_dir="tmp",
+            top_left=MED_COORDS[0],
+            bottom_right=MED_COORDS[2],
+            start_date=datetime(year=2020, month=10, day=26),
+            end_date=datetime(year=2020, month=11, day=2),
+            ascending=False,
+            scale=10
+        )
+        time.sleep(240)
+        #self.assertEqual(os.listdir("tmp"), 4)
+        shutil.rmtree('tmp', ignore_errors=True)
 
     def test_big_scale_download(self):
         '''Tests download with a large scale and missing pixel values

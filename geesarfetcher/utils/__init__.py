@@ -1,5 +1,6 @@
 import math
 from datetime import timedelta
+from datetime import datetime
 
 MAX_GEE_PIXELS_DOWNLOAD = 1048576
 GEE_ERROR_PLACEHOLDER = "ImageCollection.getRegion: Too many values: "
@@ -174,3 +175,16 @@ def get_date_interval_array(start_date, end_date, day_timedelta=1):
         tmp_date += timedelta(days=day_timedelta)
 
     return date_intervals
+
+
+def print_verbose(msg, verbose, expected_verbose):
+    if verbose == 0:
+        pass
+    elif verbose == 1 and expected_verbose >= 1:
+        print(msg)
+
+    elif verbose == 2 and expected_verbose >= 1:
+        now = datetime.now()
+
+        current_time = now.strftime("%H:%M:%S")
+        print(f"[INFO] t={current_time} | {msg}")

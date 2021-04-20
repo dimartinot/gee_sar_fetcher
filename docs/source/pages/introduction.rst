@@ -36,7 +36,8 @@ The function to call in order to retrieve data over an area is the ``fetch`` fun
        end_date = date.today(),
        ascending = False,
        scale = 10,
-       n_jobs = 8
+       n_jobs = 8,
+       verbose = 0
    ) # returns a dictionnary with access to the data through the 'stack' keyword, to its timestamps through the 'timestamps' keyword and to pixels' coordinates with 'coordinates' key.
 
 It returns a ``dict`` object with 4 keys:
@@ -76,6 +77,7 @@ The function to call in order to retrieve & save data over an area is the ``fetc
       ascending = False,
       scale = 10,
       n_jobs = 8
+      verbose = 0
    ) # saves each timestep of the multitemporal SAR image in the directory specified by the keyword 'save_dir'
 
 
@@ -100,7 +102,8 @@ To fetch over a single point, the process is similar to the difference that we u
       start_date = date.today()-timedelta(days=15),
       end_date = date.today(),
       ascending = False,
-      scale = 10
+      scale = 10,
+      verbose = 0
    )
 
 For data consistency, the returned object is of the same nature as with the ``fetch`` method, i.e a ``dict`` with 4 keys:

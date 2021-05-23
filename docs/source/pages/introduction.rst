@@ -14,6 +14,15 @@ calibration.
 
 Compatible with python 3.
 
+
+Addition with version 0.3.3
+---------------------------
+
+The development of version 0.3.3 added two new functionalities to the library:
+ - the ability to select the orbit number of the downloaded temporal stack. It can directly be supplied by the user, or the said user can supply a keyword "min" or "max" and the adequate orbit number will automatically be extracted, given the orbit type and coordinates.
+ - the ability to retrieve metadata from the downloaded stack, one per temporal image.
+
+
 Usage
 -----
 
@@ -30,14 +39,15 @@ The function to call in order to retrieve data over an area is the ``fetch`` fun
    from datetime import date, timedelta
 
    d = fetch(
-       top_left = [-104.77431630331856, 41.729889598264826], 
-       bottom_right = [-104.65140675742012, 41.81515375846025],
-       start_date = date.today()-timedelta(days=15),
-       end_date = date.today(),
-       ascending = False,
-       scale = 10,
-       n_jobs = 8
-   ) # returns a dictionnary with access to the data through the 'stack' keyword, to its timestamps through the 'timestamps' keyword and to pixels' coordinates with 'coordinates' key.
+      top_left=[-116.17556985040491, 60.527371254744246],
+      bottom_right=[-116.1364310564596, 60.54425859382555],
+      start_date=datetime(year=2021, month=5, day=20) - timedelta(days=365),
+      end_date=datetime(year=2021, month=5, day=20),
+      ascending=False,
+      scale=10,
+      orbit_number="max",
+      verbose=2
+   ) # returns a dictionnary with access to the data through the 'stack' keyword, to its timestamps through the 'timestamps' keyword, to pixels' coordinates with 'coordinates' key and to metadata with the 'metadata' key.
 
 It returns a ``dict`` object with 4 keys:
    ``"stacks"``
@@ -75,11 +85,13 @@ The function to call in order to retrieve & save data over an area is the ``fetc
       end_date = datetime(2019, 6, 3),
       ascending = False,
       scale = 10,
-      n_jobs = 8
+      orbit_number="max",
+      n_jobs = 8,
+      verbose = 2
    ) # saves each timestep of the multitemporal SAR image in the directory specified by the keyword 'save_dir'
 
 
-It saves each timestep as a GeoTIFF file using the following naming pattern: 't_{date}_{subcoordinate_index}.tiff'.
+It saves each timestep as a GeoTIFF file using the following naming pattern: 't_{date}_{subcoordinate_index}.tiff'. Metadata are saved as .json files following the same naming convention (i.e. 't_{date}_{subcoordinate_index}.json').
 
 Subcoordinate indexes are generated when splitting the initial whole area into smaller areas. 
 Each of the subregion is then saved as a separate GeoTIFF, for less memory consumption.
@@ -100,7 +112,9 @@ To fetch over a single point, the process is similar to the difference that we u
       start_date = date.today()-timedelta(days=15),
       end_date = date.today(),
       ascending = False,
-      scale = 10
+      scale = 10,
+      orbit_number="max",
+      verbose = 2
    )
 
 For data consistency, the returned object is of the same nature as with the ``fetch`` method, i.e a ``dict`` with 4 keys:

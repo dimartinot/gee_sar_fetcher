@@ -128,3 +128,4 @@ dmypy.json
 README.rst
 .pypi_info.md
 test_procedure.md
+tmp/*

@@ -1,15 +1,14 @@
 # LIBRARY IMPORTS
 import ee
-import warnings
 from datetime import datetime, date, timedelta
+from numpy.lib.function_base import iterable
 from tqdm import tqdm
 from functools import cmp_to_key
 import numpy as np
 from joblib import Parallel, delayed
 import os
 import ntpath
-import sys
-
+import json
 
 # LOCAL IMPORTS
 from .constants import ASCENDING, DESCENDING
@@ -18,9 +17,9 @@ from .exceptions import IncorrectOrbitException
 from .filter import filter_sentinel1_data
 from .fetcher import fetch_sentinel1_data
 from .fetcher import _get_zone_between_dates
+from .fetcher import _get_properties_between_dates
 from .utils import make_polygon
 from .utils import tile_coordinates
-from .utils import define_image_shape
 from .utils import retrieve_max_pixel_count_from_pattern
 from .utils import cmp_coords
 from .utils import get_date_interval_array
@@ -34,6 +33,7 @@ def get_pixel_values(
     start_date: datetime = date.today() - timedelta(days=365),
     end_date: datetime = date.today(),
     ascending: bool = True,
+    orbit_number: object = None,
     scale=20,
     n_jobs=1,
     verbose=0,
@@ -63,6 +63,13 @@ def get_pixel_values(
     ascending : boolean, optional
         The trajectory to use when selecting data
 
+    orbit_number : int or str, optional
+        The orbit number to restrict the download to. If provided with an integer, the S1 temporal stack is filtered using the provided orbit number.
+        If provided with a string value, we expect one of these keywords:
+         - "max" for the orbit number with the highest number of image in the stack
+         - "min" for the orbit number with the smallest number of image in the stack
+        If ``None``, then no filter over the orbit number is applied.
+
     scale : int, optional
         Scale parameters of the getRegion() function. Defaulting at ``20``,
         change it to change the scale of the final data points. The highest,
@@ -86,6 +93,21 @@ def get_pixel_values(
         top_left, bottom_right, coords, start_date, end_date, ascending, scale
     )
 
+    if orbit_number is not None and type(orbit_number) == str:
+        orbit_number = get_orbit_number(
+            top_left,
+            bottom_right,
+            coords,
+            start_date,
+            end_date,
+            ascending,
+            orbit_number,
+            scale,
+        )
+
+    if orbit_number is not None:
+        print_verbose(f"Selected orbit: {orbit_number}", verbose, 1)
+
     date_intervals = get_date_interval_array(start_date, end_date)
 
     print_verbose(
@@ -96,6 +118,7 @@ def get_pixel_values(
     print_verbose(f"Generating values for each subcoordinate", verbose, 1)
     per_coord_dict = {}
 
+    properties = []
     for n, c in enumerate(list_of_coordinates):
         print_verbose(f"Starting process for subcoordinate n°{n}", verbose, 1)
         vals = []
@@ -104,9 +127,15 @@ def get_pixel_values(
         # Updates vals and headers, one by aggregating returned values of the delayed function, the other by modifying the passed `headers` argument
         vals = Parallel(n_jobs=n_jobs, require="sharedmem")(
             delayed(_get_zone_between_dates)(
-                sub_start_date, sub_end_date, polygon, scale, orbit, headers
+                sub_start_date,
+                sub_end_date,
+                polygon,
+                scale,
+                orbit,
+                orbit_number,
+                headers,
             )
-            for sub_start_date, sub_end_date in date_intervals
+            for sub_start_date, sub_end_date in tqdm(date_intervals)
         )
         vals = [val for val in vals if val is not None]
         dictified_vals = [dict(zip(headers, val)) for values in vals for val in values]
@@ -114,6 +143,15 @@ def get_pixel_values(
             dictified_values=dictified_vals,
             coordinates_dictionary=per_coord_dict,
         )
+
+        tmp_properties = Parallel(n_jobs=n_jobs, require="sharedmem")(
+            delayed(_get_properties_between_dates)(
+                sub_start_date, sub_end_date, polygon, orbit, orbit_number
+            )
+            for sub_start_date, sub_end_date in tqdm(date_intervals)
+        )
+        tmp_properties = [p for p in tmp_properties if p is not None]
+        properties.append(tmp_properties)
         print_verbose(f"Ending process for subcoordinate n°{n}", verbose, 2)
 
     print_verbose(f"Sorting pixel values by coordinates", verbose, 2)
@@ -122,7 +160,9 @@ def get_pixel_values(
     pixel_values.sort(key=cmp_coordinates)  # sorting pixels by latitude then longitude
     print_verbose(f"Pixel values sorted...", verbose, 2)
 
-    return pixel_values
+    print_verbose(f"Transforming properties...", verbose, 1)
+
+    return pixel_values, properties
 
 
 def get_point_pixel_values(
@@ -130,6 +170,7 @@ def get_point_pixel_values(
     start_date: datetime = date.today() - timedelta(days=365),
     end_date: datetime = date.today(),
     ascending: bool = True,
+    orbit_number: object = None,
     scale: int = 20,
     n_jobs: int = 1,
     verbose: int = 0,
@@ -151,6 +192,13 @@ def get_point_pixel_values(
 
     ascending : boolean, optional
         The trajectory to use when selecting data
+
+    orbit_number : int or str, optional
+        The orbit number to restrict the download to. If provided with an integer, the S1 temporal stack is filtered using the provided orbit number.
+        If provided with a string value, we expect one of these keywords:
+         - "max" for the orbit number with the highest number of image in the stack
+         - "min" for the orbit number with the smallest number of image in the stack
+        If ``None``, then no filter over the orbit number is applied.
 
     scale : int, optional
         Scale parameters of the getRegion() function. Defaulting at ``20``,
@@ -174,14 +222,40 @@ def get_point_pixel_values(
     polygon = ee.Geometry.Point(coords)
     headers = []
 
+    if orbit_number is not None and type(orbit_number) == str:
+        orbit_number = get_orbit_number(
+            coords=coords,
+            start_date=start_date,
+            end_date=end_date,
+            ascending=ascending,
+            orbit_number=orbit_number,
+            scale=scale,
+        )
+
+    if orbit_number is not None:
+        print_verbose(f"Selected orbit: {orbit_number}", verbose, 1)
+
     print_verbose(f"Generating values for each time interval", verbose, 1)
     # Updates vals and headers, one by aggregating returned values of the delayed function, the other by modifying the passed `headers` argument
     vals = Parallel(n_jobs=n_jobs, require="sharedmem")(
         delayed(_get_zone_between_dates)(
-            sub_start_date, sub_end_date, polygon, scale, orbit, headers
+            sub_start_date, sub_end_date, polygon, scale, orbit, orbit_number, headers
         )
         for sub_start_date, sub_end_date in tqdm(date_intervals)
     )
+
+    print_verbose(f"Retrieving data properties for each time interval", verbose, 1)
+    properties = Parallel(n_jobs=n_jobs, require="sharedmem")(
+        delayed(_get_properties_between_dates)(
+            sub_start_date, sub_end_date, polygon, orbit, orbit_number
+        )
+        for sub_start_date, sub_end_date in tqdm(date_intervals)
+    )
+
+    properties = [p for p in properties if p is not None]
+
+    properties = np.array([properties])
+
     vals = [val for val in vals if val is not None]
     dictified_vals = [dict(zip(headers, val)) for values in vals for val in values]
     per_coord_dict = populate_coordinates_dictionary(
@@ -192,7 +266,7 @@ def get_point_pixel_values(
     cmp_coordinates = cmp_to_key(cmp_coords)
     pixel_values.sort(key=cmp_coordinates)  # sorting pixels by latitude then longitude
 
-    return pixel_values
+    return pixel_values, properties
 
 
 def get_timestamps_from_pixel_values(pixel_values):
@@ -216,7 +290,7 @@ def get_timestamps_from_pixel_values(pixel_values):
     return timestamps
 
 
-def generate_image(timestamps, pixel_values, verbose=0):
+def generate_image(timestamps, pixel_values, properties, verbose=0):
     """Given a list of timestamps and an array of pixel_values as :func:`~get_pixel_values`, generates a numpy matrix. Missing coordinates/dates will be inplaced with NaNs.
 
     Parameters
@@ -226,6 +300,9 @@ def generate_image(timestamps, pixel_values, verbose=0):
 
     pixel_values: list
         A list of dictionnaries, each providing data over one given coordinate, preferably returned by :func:`~get_pixel_values`
+
+    properties: list
+        A list of list of properties
 
     verbose : int, optional
         Verbosity mode (0: No info, 1: Info, 2: Detailed info, with added timestamp)
@@ -253,9 +330,38 @@ def generate_image(timestamps, pixel_values, verbose=0):
 
     img = np.full((height, width, 2, len(timestamps)), fill_value=np.nan)
 
+    # we transform the properties object from a list of list to a list of dictionnary l = [t1, t2, t3..] where ti = {subimage1:[{...}], subimage2:[{...}], ..., subimagen:[{...}]}
+    # if two images overlaps in a given subcoordinate polygon, we merge them by mean and keep these two seperate properties information
+    n_properties = [
+        {i: [] for i in range(len(properties))} for _ in range(len(timestamps))
+    ]
+
+    for n, subcoordinate_properties in enumerate(properties):
+        for ts in subcoordinate_properties:
+
+            for i in range(len(timestamps)):
+                if (
+                    timestamps[i]
+                    == datetime.fromtimestamp(ts["system:time_start"] // 1000).date()
+                ):
+                    n_properties[i][n].append(ts)
+    for n in range(len(properties)):
+        for i in range(len(timestamps)):
+            if len(n_properties[i][n]) > 1:
+                new_field = {
+                    f"subimage_{j}": n_properties[i][n][j]
+                    for j in range(len(n_properties[i][n]))
+                }
+                n_properties[i][n] = new_field
+
     print_verbose(f"Generating image of shape {height, width}", verbose, 1)
 
-    for p in pixel_values:
+    if verbose >= 1:
+        iterator = tqdm(pixel_values)
+    else:
+        iterator = pixel_values
+
+    for p in iterator:
         x, y = lats_dict[p["lat"]], lons_dict[p["lon"]]
         vv = []
         vh = []
@@ -267,12 +373,13 @@ def generate_image(timestamps, pixel_values, verbose=0):
                 )
                 == timestamp
             )
+
             vv.append(np.nanmean(np.array(p["VV"], dtype=float)[indexes]))
             vh.append(np.nanmean(np.array(p["VH"], dtype=float)[indexes]))
 
         img[x, y, 0, :] = vv
         img[x, y, 1, :] = vh
-    return img, coordinates
+    return img, coordinates, n_properties
 
 
 def split_coordinates(
@@ -354,6 +461,90 @@ def split_coordinates(
     return list_of_coordinates
 
 
+def get_orbit_number(
+    top_left=None,
+    bottom_right=None,
+    coords=None,
+    start_date: datetime = date.today() - timedelta(days=365),
+    end_date: datetime = date.today(),
+    ascending: bool = True,
+    orbit_number: str = "max",
+    scale: int = 20,
+):
+    """Given coordinates of the whole area, and orbit number selection mode, retrieves the adequate orbit number for the given temporal stack.
+
+    Parameters
+    ----------
+
+    top_left : tuple of float, optional
+        Top left coordinates (lon, lat) of the Region
+
+    bottom_right : tuple of float, optional
+        Bottom right coordinates (lon, lat) of the Region
+
+    coords : tuple of tuple of float or list of list of float, optional
+        If `top_left` and `bottom_right` are not specified, we expect `coords`
+        to be a list (resp. tuple) of the form ``[top_left, bottom_right]``
+        (resp. ``(top_left, bottom_right)``)
+
+    start_date : datetime.datetime, optional
+        First date of the time interval
+
+    end_date : datetime.datetime, optional
+        Last date of the time interval
+
+    ascending : boolean, optional
+        The trajectory to use when selecting data
+
+
+    orbit_number : str, optional
+        The orbit number option. We expect one of these keywords:
+         - "max" for the orbit number with the highest number of image in the stack
+         - "min" for the orbit number with the smallest number of image in the stack
+
+    scale : int, optional
+        Scale parameters of the getRegion() function. Defaulting at ``20``,
+        change it to change the scale of the final data points. The highest,
+        the lower the spatial resolution. Should be at least ``10``.
+
+    Returns
+    -------
+    `int`
+        Returns the selected orbit number
+
+    """
+    orbit = ASCENDING if ascending else DESCENDING
+
+    if top_left is not None:
+        list_of_coordinates = [make_polygon(top_left, bottom_right)]
+        polygon = ee.Geometry.Polygon(list_of_coordinates)
+    else:
+        if len(coords) == 2 and type(coords[0]) is not iterable:
+            polygon = ee.Geometry.Point(coords)
+        else:
+            polygon = ee.Geometry.Polygon([coords])
+
+    date_intervals = get_date_interval_array(start_date, end_date)
+
+    sentinel_1_roi = filter_sentinel1_data(
+        start_date=date_intervals[0][0],
+        end_date=date_intervals[-1][1],
+        geometry=polygon,
+        orbit=orbit,
+    )
+    orbit_number_list = sentinel_1_roi.aggregate_array(
+        "relativeOrbitNumber_start"
+    ).getInfo()
+
+    orbit_count = np.bincount(orbit_number_list, minlength=max(orbit_number_list))
+
+    if orbit_number.lower() == "max":
+        return np.argmax(orbit_count)
+    if orbit_number.lower() == "min":
+        orbit_count = np.ma.MaskedArray(orbit_count, orbit_count < 1)
+        return np.ma.argmin(orbit_count)
+
+
 def per_date_saving(
     save_dir: str,
     top_left=None,
@@ -362,6 +553,7 @@ def per_date_saving(
     start_date: datetime = date.today() - timedelta(days=365),
     end_date: datetime = date.today(),
     ascending: bool = True,
+    orbit_number: object = None,
     scale: int = 20,
     n_jobs: int = 8,
     verbose: int = 1,
@@ -393,6 +585,13 @@ def per_date_saving(
 
     ascending : boolean, optional
         The trajectory to use when selecting data
+
+    orbit_number : int or str, optional
+        The orbit number to restrict the download to. If provided with an integer, the S1 temporal stack is filtered using the provided orbit number.
+        If provided with a string value, we expect one of these keywords:
+         - "max" for the orbit number with the highest number of image in the stack
+         - "min" for the orbit number with the smallest number of image in the stack
+        If ``None``, then no filter over the orbit number is applied.
 
     scale : int, optional
         Scale parameters of the getRegion() function. Defaulting at ``20``,
@@ -435,6 +634,20 @@ def per_date_saving(
         )
 
     orbit = ASCENDING if ascending else DESCENDING
+    if orbit_number is not None and type(orbit_number) == str:
+        orbit_number = get_orbit_number(
+            top_left,
+            bottom_right,
+            coords,
+            start_date,
+            end_date,
+            ascending,
+            orbit_number,
+            scale,
+        )
+
+    if orbit_number is not None:
+        print_verbose(f"Selected orbit: {orbit_number}", verbose, 1)
 
     list_of_coordinates = split_coordinates(
         top_left, bottom_right, coords, start_date, end_date, ascending, scale
@@ -465,7 +678,10 @@ def per_date_saving(
             polygon = ee.Geometry.Polygon([c])
             # Updates vals and headers, one by aggregating returned values of the delayed function, the other by modifying the passed `headers` argument
             vals = _get_zone_between_dates(
-                start_date, end_date, polygon, scale, orbit, headers
+                start_date, end_date, polygon, scale, orbit, orbit_number, headers
+            )
+            properties = _get_properties_between_dates(
+                start_date, end_date, polygon, orbit, orbit_number
             )
             if vals is not None:
                 vals = [val for val in vals if val is not None]
@@ -483,7 +699,9 @@ def per_date_saving(
                 )  # sorting pixels by latitude then longitude
 
                 timestamps = get_timestamps_from_pixel_values(pixel_values)
-                img, coordinates = generate_image(timestamps, pixel_values)
+                img, coordinates = generate_image(
+                    timestamps, pixel_values, properties, verbose=verbose
+                )
 
                 date = timestamps[0].strftime("%Y%m%d")
                 print_verbose(f"Saving 't_{date}_{n}.tiff'", verbose, 2)
@@ -491,6 +709,8 @@ def per_date_saving(
                 save_as_geotiff(
                     os.path.join(save_dir, f"t_{date}_{n}.tiff"), img, coordinates
                 )
+
+                save_properties(f"t_{date}_{n}.json", properties)
 
                 check_vals = True  # boolean variable to identify if an image exist in the checked time interval
 
@@ -580,3 +800,20 @@ def save_as_geotiff(filename, img, coordinates):
     dst_ds.GetRasterBand(2).WriteArray(img[:, :, 1])  # write VH-band to the raster
     dst_ds.FlushCache()  # write to disk
     dst_ds = None
+
+
+def save_properties(filename, properties):
+    """
+    Saves the output of fetch methods' properties as a .json file.
+
+    Parameters
+    ----------
+    filename: str
+        Name & path to save the GeoTIFF file
+
+    properties: dict
+        Properties dictionnary extracted alongside of
+
+    """
+    with open(filename, "w") as fout:
+        json.dumps(properties, indent=4)

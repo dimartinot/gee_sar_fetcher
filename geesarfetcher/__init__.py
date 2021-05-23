@@ -263,6 +263,7 @@ def fetch_and_save(
     start_date: datetime = date.today() - timedelta(days=365),
     end_date: datetime = date.today(),
     ascending: bool = True,
+    orbit_number: object = None,
     scale: int = 20,
     n_jobs: int = 8,
     verbose: int = 0,
@@ -294,6 +295,13 @@ def fetch_and_save(
 
     ascending : boolean, optional
         The trajectory to use when selecting data
+
+    orbit_number : int or str, optional
+        The orbit number to restrict the download to. If provided with an integer, the S1 temporal stack is filtered using the provided orbit number.
+        If provided with a string value, we expect one of these keywords:
+         - "max" for the orbit number with the highest number of image in the stack
+         - "min" for the orbit number with the smallest number of image in the stack
+        If ``None``, then no filter over the orbit number is applied.
 
     scale : int, optional
         Scale parameters of the getRegion() function. Defaulting at ``20``,
@@ -334,7 +342,7 @@ def fetch_and_save(
 
     if save_dir is None or os.path.exists(save_dir) == False:
         raise ValueError(
-            "Unknown directory. If you do not want tro save data as geotiff, please consider using the fetch method"
+            "Unknown directory. If you do not want to save data as geotiff, please consider using the fetch method"
         )
 
     _fetch_assertions(
@@ -348,6 +356,7 @@ def fetch_and_save(
         start_date,
         end_date,
         ascending,
+        orbit_number,
         scale,
         n_jobs,
         verbose,

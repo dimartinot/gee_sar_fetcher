@@ -5,6 +5,7 @@ from datetime import datetime, date, timedelta
 import warnings
 import time
 import os, shutil
+
 warnings.simplefilter(action="ignore")
 
 # SMALL COORDS
@@ -13,7 +14,7 @@ SMALL_COORDS = [
     [-104.7079050756491, 41.77751907620989],
     [-104.7079050756491, 41.78321546046257],
     [-104.71539380321867, 41.78321546046257],
-    [-104.71539380321867, 41.77751907620989]
+    [-104.71539380321867, 41.77751907620989],
 ]
 
 MED_COORDS = [
@@ -21,7 +22,7 @@ MED_COORDS = [
     [-104.65140675742012, 41.729889598264826],
     [-104.65140675742012, 41.81515375846025],
     [-104.77431630331856, 41.81515375846025],
-    [-104.77431630331856, 41.729889598264826]
+    [-104.77431630331856, 41.729889598264826],
 ]
 
 BIG_COORDS = [
@@ -29,48 +30,45 @@ BIG_COORDS = [
     [-104.53690861899238, 41.62148183942426],
     [-104.53690861899238, 41.884778748257574],
     [-104.88572453696113, 41.884778748257574],
-    [-104.88572453696113, 41.62148183942426]
+    [-104.88572453696113, 41.62148183942426],
 ]
 
 
 class TestFetcher(unittest.TestCase):
     def test_small_download(self):
-        '''Tests download with a small region and small time interval
-        '''
+        """Tests download with a small region and small time interval"""
         d = fetch(
             top_left=SMALL_COORDS[0],
             bottom_right=SMALL_COORDS[2],
             start_date=datetime(year=2020, month=10, day=24),
             end_date=datetime(year=2020, month=11, day=2),
             ascending=False,
-            scale=10)
+            scale=10,
+        )
 
         self.assertTrue(isinstance(d, dict))
-        self.assertTrue("timestamps" in list(d.keys())
-                        and len(d["timestamps"]) == 2)
+        self.assertTrue("timestamps" in list(d.keys()) and len(d["timestamps"]) == 2)
         self.assertTrue(d["stack"].shape == (64, 83, 2, 2))
 
     def test_medium_download(self):
-        '''Tests download with a medium region (at least one cut) and small time interval
-        '''
+        """Tests download with a medium region (at least one cut) and small time interval"""
         d = fetch(
             top_left=MED_COORDS[0],
             bottom_right=MED_COORDS[2],
             start_date=datetime(year=2020, month=10, day=24),
             end_date=datetime(year=2020, month=11, day=2),
             ascending=False,
-            scale=10)
+            scale=10,
+        )
 
         self.assertTrue(isinstance(d, dict))
-        self.assertTrue("timestamps" in list(d.keys())
-                        and len(d["timestamps"]) == 2)
+        self.assertTrue("timestamps" in list(d.keys()) and len(d["timestamps"]) == 2)
         self.assertTrue(d["stack"].shape == (949, 1368, 2, 2))
 
     def test_medium_download_to_disk(self):
-        '''Tests download with a medium region (at least one cut) and small time interval
-        '''
-        
-        shutil.rmtree('tmp', ignore_errors=True)
+        """Tests download with a medium region (at least one cut) and small time interval"""
+
+        shutil.rmtree("tmp", ignore_errors=True)
         os.mkdir("tmp")
 
         fetch_and_save(
@@ -80,77 +78,72 @@ class TestFetcher(unittest.TestCase):
             start_date=datetime(year=2020, month=10, day=26),
             end_date=datetime(year=2020, month=11, day=2),
             ascending=False,
-            scale=10
+            scale=10,
         )
         time.sleep(240)
-        #self.assertEqual(os.listdir("tmp"), 4)
-        shutil.rmtree('tmp', ignore_errors=True)
+        # self.assertEqual(os.listdir("tmp"), 4)
+        shutil.rmtree("tmp", ignore_errors=True)
 
     def test_big_scale_download(self):
-        '''Tests download with a large scale and missing pixel values
-        '''
+        """Tests download with a large scale and missing pixel values"""
         d = fetch(
-            top_left = [5.26948161, 49.97440374],
-            bottom_right = [8.07913236, 47.90621773],
-            start_date = datetime(2019, 6, 1),
-            end_date = datetime(2019, 6, 3),
+            top_left=[5.26948161, 49.97440374],
+            bottom_right=[8.07913236, 47.90621773],
+            start_date=datetime(2019, 6, 1),
+            end_date=datetime(2019, 6, 3),
             ascending=False,
             scale=1000,
         )
         self.assertEqual(d["stack"].shape, (231, 312, 2, 1))
-        self.assertEqual(d["stack"][100,100,0,0], -11.805720298590167)
+        self.assertEqual(d["stack"][100, 100, 0, 0], -11.805720298590167)
 
     def test_fetch_point_small_scale(self):
-        '''Tests fetch_point method with a relative small scale of 10
-        '''
+        """Tests fetch_point method with a relative small scale of 10"""
         d = fetch_point(
-            coords = [-104.88572453696113, 41.884778748257574],
+            coords=[-104.88572453696113, 41.884778748257574],
             start_date=datetime(year=2020, month=10, day=24),
             end_date=datetime(year=2020, month=11, day=2),
             ascending=False,
-            scale=10
+            scale=10,
         )
-        self.assertTrue(d['stack'].shape == (1,1,2,2))
-        self.assertTrue(np.round(d['stack'][0,0,0,0] - (-15.11937733), 2) == 0.0)
+        self.assertTrue(d["stack"].shape == (1, 1, 2, 2))
+        self.assertTrue(np.round(d["stack"][0, 0, 0, 0] - (-15.11937733), 2) == 0.0)
 
     def test_fetch_point_med_scale(self):
-        '''Tests fetch_point method with a relative medium scale of 100
-        '''
+        """Tests fetch_point method with a relative medium scale of 100"""
         d = fetch_point(
-            coords = [-104.88572453696113, 41.884778748257574],
+            coords=[-104.88572453696113, 41.884778748257574],
             start_date=datetime(year=2020, month=10, day=24),
             end_date=datetime(year=2020, month=11, day=2),
             ascending=False,
-            scale=100
+            scale=100,
         )
-        self.assertTrue(d['stack'].shape == (1,1,2,2))
-        self.assertTrue(np.round(d['stack'][0,0,0,0] - (-15.04562971), 2) == 0.0)
+        self.assertTrue(d["stack"].shape == (1, 1, 2, 2))
+        self.assertTrue(np.round(d["stack"][0, 0, 0, 0] - (-15.04562971), 2) == 0.0)
 
     def test_fetch_point_med_scale(self):
-        '''Tests fetch_point method with a relative medium scale of 100
-        '''
+        """Tests fetch_point method with a relative medium scale of 100"""
         d = fetch_point(
-            coords = [-104.88572453696113, 41.884778748257574],
+            coords=[-104.88572453696113, 41.884778748257574],
             start_date=datetime(year=2020, month=10, day=24),
             end_date=datetime(year=2020, month=11, day=2),
             ascending=False,
-            scale=1000
+            scale=1000,
         )
-        self.assertTrue(d['stack'].shape == (1,1,2,2))
-        self.assertTrue(np.round(d['stack'][0,0,0,0] - (-13.21006906), 2) == 0.0)
+        self.assertTrue(d["stack"].shape == (1, 1, 2, 2))
+        self.assertTrue(np.round(d["stack"][0, 0, 0, 0] - (-13.21006906), 2) == 0.0)
 
     def test_exceptions(self):
-        '''Tests raised exceptions
-        '''
+        """Tests raised exceptions"""
         # Redundant information provided as input
         kwargs = {
             "top_left": MED_COORDS[0],
             "bottom_right": MED_COORDS[2],
-            "coords": [MED_COORDS[0],MED_COORDS[2]],
+            "coords": [MED_COORDS[0], MED_COORDS[2]],
             "start_date": datetime(year=2020, month=10, day=24),
             "end_date": datetime(year=2020, month=11, day=2),
             "ascending": False,
-            "scale": 10
+            "scale": 10,
         }
         self.assertRaises(ValueError, fetch, **kwargs)
 
@@ -172,4 +165,49 @@ class TestFetcher(unittest.TestCase):
         kwargs["start_date"] = datetime(year=2020, month=8, day=16)
         kwargs["end_date"] = None
         self.assertRaises(AssertionError, fetch, **kwargs)
-        
+
+    def test_fetch_point_orbit_number(self):
+        """Tests fetch_point method with a restriction over orbit number"""
+        d = fetch_point(
+            coords=(-116.13343903887964, 60.55529448578583),
+            start_date=datetime(year=2021, month=5, day=20) - timedelta(days=365),
+            end_date=datetime(year=2021, month=5, day=20),
+            ascending=False,
+            scale=10,
+            orbit_number="max",
+        )
+        self.assertTrue(d["stack"].shape == (1, 1, 2, 51))
+
+        d = fetch_point(
+            coords=(-116.13343903887964, 60.55529448578583),
+            start_date=datetime(year=2021, month=5, day=20) - timedelta(days=365),
+            end_date=datetime(year=2021, month=5, day=20),
+            ascending=False,
+            scale=10,
+            orbit_number="min",
+        )
+        self.assertTrue(d["stack"].shape == (1, 1, 2, 31))
+
+    def test_fetch_area_orbit_number(self):
+        """Tests fetch_point method with a restriction over orbit number"""
+        d = fetch(
+            top_left=[-116.17556985040491, 60.527371254744246],
+            bottom_right=[-116.1364310564596, 60.54425859382555],
+            start_date=datetime(year=2021, month=5, day=20) - timedelta(days=365),
+            end_date=datetime(year=2021, month=5, day=20),
+            ascending=False,
+            scale=10,
+            orbit_number="max",
+        )
+        self.assertTrue(d["stack"].shape == (188, 436, 2, 30))
+
+        d = fetch(
+            top_left=[-116.17556985040491, 60.527371254744246],
+            bottom_right=[-116.1364310564596, 60.54425859382555],
+            start_date=datetime(year=2021, month=5, day=20) - timedelta(days=365),
+            end_date=datetime(year=2021, month=5, day=20),
+            ascending=False,
+            scale=10,
+            orbit_number="min",
+        )
+        self.assertTrue(d["stack"].shape == (188, 436, 2, 30))

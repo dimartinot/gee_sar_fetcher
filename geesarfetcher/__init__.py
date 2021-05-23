@@ -1,6 +1,6 @@
 """geesarfetcher"""
 
-__version__ = "0.3.2"
+__version__ = "0.3.3"
 
 # LIBRARY IMPORTS
 import ee
@@ -32,6 +32,7 @@ def fetch(
     start_date: datetime = date.today() - timedelta(days=365),
     end_date: datetime = date.today(),
     ascending: bool = True,
+    orbit_number: object = None,
     scale: int = 20,
     n_jobs: int = 8,
     verbose: int = 0,
@@ -59,6 +60,13 @@ def fetch(
 
     ascending : boolean, optional
         The trajectory to use when selecting data
+
+    orbit_number : int or str, optional
+        The orbit number to restrict the download to. If provided with an integer, the S1 temporal stack is filtered using the provided orbit number.
+        If provided with a string value, we expect one of these keywords:
+         - "max" for the orbit number with the highest number of image in the stack
+         - "min" for the orbit number with the smallest number of image in the stack
+        If ``None``, then no filter over the orbit number is applied.
 
     scale : int, optional
         Scale parameters of the getRegion() function. Defaulting at ``20``,
@@ -92,7 +100,8 @@ def fetch(
 
             ``"metadata"``
                 Dictionnary describing data for each axis of the stack and the
-                coordinates
+                coordinates as well as the properties (orbit number, slice,
+                acquisition time...) of each image of the temporal stack
 
     """
 
@@ -100,19 +109,22 @@ def fetch(
         top_left, bottom_right, coords, start_date, end_date, ascending, scale, n_jobs
     )
 
-    pixel_values = get_pixel_values(
+    pixel_values, properties = get_pixel_values(
         top_left=top_left,
         bottom_right=bottom_right,
         coords=coords,
         start_date=start_date,
         end_date=end_date,
         ascending=ascending,
+        orbit_number=orbit_number,
         scale=scale,
         n_jobs=n_jobs,
         verbose=verbose,
     )
     timestamps = get_timestamps_from_pixel_values(pixel_values)
-    img, coordinates = generate_image(timestamps, pixel_values)
+    img, coordinates, properties = generate_image(
+        timestamps, pixel_values, properties, verbose=verbose
+    )
 
     return {
         "stack": img,
@@ -130,6 +142,7 @@ def fetch(
                 "axis_1": "width",
                 "axis_2": "0:latitude; 1:longitude",
             },
+            "properties": properties,
         },
     }
 
@@ -139,6 +152,7 @@ def fetch_point(
     start_date: datetime = date.today() - timedelta(days=365),
     end_date: datetime = date.today(),
     ascending: bool = True,
+    orbit_number: object = None,
     scale: int = 20,
     n_jobs: int = 8,
     verbose: int = 0,
@@ -158,6 +172,13 @@ def fetch_point(
 
     ascending : boolean, optional
         The trajectory to use when selecting data
+
+    orbit_number : int or str, optional
+        The orbit number to restrict the download to. If provided with an integer, the S1 temporal stack is filtered using the provided orbit number.
+        If provided with a string value, we expect one of these keywords:
+         - "max" for the orbit number with the highest number of image in the stack
+         - "min" for the orbit number with the smallest number of image in the stack
+        If ``None``, then no filter over the orbit number is applied.
 
     scale : int, optional
         Scale parameters of the getRegion() function. Defaulting at ``20``,
@@ -191,23 +212,27 @@ def fetch_point(
 
             ``"metadata"``
                 Dictionnary describing data for each axis of the stack and the
-                coordinates
+                coordinates as well as the properties (orbit number, slice,
+                acquisition tim....) of each point of the temporal stack
 
     """
 
-    _fetch_point_assertions(coords, start_date, end_date, ascending, scale, n_jobs)
+    _fetch_point_assertions(
+        coords, start_date, end_date, ascending, orbit_number, scale, n_jobs
+    )
 
-    pixel_values = get_point_pixel_values(
+    pixel_values, properties = get_point_pixel_values(
         coords=coords,
         start_date=start_date,
         end_date=end_date,
         ascending=ascending,
+        orbit_number=orbit_number,
         scale=scale,
         n_jobs=n_jobs,
         verbose=verbose,
     )
     timestamps = get_timestamps_from_pixel_values(pixel_values)
-    img, coordinates = generate_image(timestamps, pixel_values)
+    img, coordinates, properties = generate_image(timestamps, pixel_values, properties)
 
     return {
         "stack": img,
@@ -225,6 +250,7 @@ def fetch_point(
                 "axis_1": "width",
                 "axis_2": "0:latitude; 1:longitude",
             },
+            "properties": properties,
         },
     }
 
@@ -300,8 +326,9 @@ def fetch_and_save(
                 (`list of str`)
 
             ``"metadata"``
-                Dictionnary describing data for each axis of the stack and the
-                coordinates
+                Dictionnary describing data for each axis of the stack, the
+                coordinates as well as the properties (orbit number, slice,
+                acquisition time....) of each image of the temporal stack
 
     """
 

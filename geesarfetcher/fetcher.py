@@ -1,3 +1,4 @@
+import ee
 from geesarfetcher.filter import filter_sentinel1_data
 from geesarfetcher.constants import VV, VH, IW, ASCENDING, GEE_PROPERTIES
 
@@ -42,13 +43,43 @@ def fetch_sentinel1_data(
         orbit=orbit,
         orbit_number=orbit_number,
     )
-    val_vv = sentinel_1_roi.select(VV).getRegion(geometry, scale=scale).getInfo()
-    val_vh = sentinel_1_roi.select(VH).getRegion(geometry, scale=scale).getInfo()
-    val_header = val_vv[0][1:] + [VH]
-    val = [
-        val_vv[i][1:] + [val_vh[i][val_vh[0].index(VH)]] for i in range(1, len(val_vv))
-    ]
-    return (val_header, val)
+
+    # in case of multiple images on the same date, at slice edges for instance, we loop over them
+    img_count = sentinel_1_roi.size().getInfo()
+
+    if img_count > 1:
+
+        val_vv = (
+            ee.ImageCollection(sentinel_1_roi.select(VV).mean())
+            .getRegion(geometry, scale=scale)
+            .getInfo()
+        )
+        val_vh = (
+            ee.ImageCollection(sentinel_1_roi.select(VH).mean())
+            .getRegion(geometry, scale=scale)
+            .getInfo()
+        )
+        time = sentinel_1_roi.first().get("system:time_start").getInfo()
+
+        val_header = val_vv[0][1:] + [VH]
+
+        val = [
+            val_vv[i][1:3] + [time] + [val_vv[i][-1]] + [val_vh[i][val_vh[0].index(VH)]]
+            for i in range(1, len(val_vv))
+        ]
+
+        return (val_header, val)
+
+    else:
+        val_vv = sentinel_1_roi.select(VV).getRegion(geometry, scale=scale).getInfo()
+        val_vh = sentinel_1_roi.select(VH).getRegion(geometry, scale=scale).getInfo()
+        val_header = val_vv[0][1:] + [VH]
+        val = [
+            val_vv[i][1:] + [val_vh[i][val_vh[0].index(VH)]]
+            for i in range(1, len(val_vv))
+        ]
+
+        return (val_header, val)
 
 
 def fetch_sentinel1_properties(
@@ -118,6 +149,8 @@ def _get_zone_between_dates(
         return val
 
     except Exception as e:
+        if "No bands" not in str(e):
+            print("Unexpected Error, please report.", e)
         pass
 
 

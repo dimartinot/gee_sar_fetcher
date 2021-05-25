@@ -129,3 +129,5 @@ README.rst
 .pypi_info.md
 test_procedure.md
 tmp/*
+gee_fetched/*
+t_*.json

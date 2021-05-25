@@ -11,7 +11,7 @@ import ntpath
 import json
 
 # LOCAL IMPORTS
-from .constants import ASCENDING, DESCENDING
+from .constants import ASCENDING, DESCENDING, VV
 from .coordinates import populate_coordinates_dictionary
 from .exceptions import IncorrectOrbitException
 from .filter import filter_sentinel1_data
@@ -439,13 +439,13 @@ def split_coordinates(
     # retrieving the number of pixels per image
     try:
         polygon = ee.Geometry.Polygon(list_of_coordinates)
-        _ = fetch_sentinel1_data(
-            start_date=date_intervals[0][0],
-            end_date=date_intervals[-1][1],
+        sentinel_1_roi = filter_sentinel1_data(
+            start_date=start_date,
+            end_date=end_date,
             geometry=polygon,
-            scale=scale,
             orbit=orbit,
         )
+        _ = sentinel_1_roi.select(VV).getRegion(polygon, scale=scale).getInfo()
     except Exception as e:
         # If the area is found to be too big
         if str(e) == "ImageCollection.getRegion: No bands in collection.":
@@ -683,9 +683,9 @@ def per_date_saving(
             properties = _get_properties_between_dates(
                 start_date, end_date, polygon, orbit, orbit_number
             )
-            if vals is not None:
+            if vals is not None and properties is not None:
                 vals = [val for val in vals if val is not None]
-
+                properties = [[properties]]
                 dictified_vals = [dict(zip(headers, values)) for values in vals]
                 per_coord_dict = populate_coordinates_dictionary(
                     dictified_values=dictified_vals,
@@ -699,7 +699,7 @@ def per_date_saving(
                 )  # sorting pixels by latitude then longitude
 
                 timestamps = get_timestamps_from_pixel_values(pixel_values)
-                img, coordinates = generate_image(
+                img, coordinates, properties = generate_image(
                     timestamps, pixel_values, properties, verbose=verbose
                 )
 
@@ -710,9 +710,11 @@ def per_date_saving(
                     os.path.join(save_dir, f"t_{date}_{n}.tiff"), img, coordinates
                 )
 
-                save_properties(f"t_{date}_{n}.json", properties)
+                save_properties(
+                    os.path.join(save_dir, f"t_{date}_{n}.json"), properties
+                )
 
-                check_vals = True  # boolean variable to identify if an image exist in the checked time interval
+                check_vals = True  # boolean variable to identify if an image exists in the checked time interval
 
         if check_vals:
             print_verbose(
@@ -752,12 +754,14 @@ def save_as_geotiff(filename, img, coordinates):
         access to latitude and ``[:,:,1]`` provides access to
         longitude, (`numpy.ndarray`), ``(height, width, 2)``
     """
+
     try:
         from osgeo import gdal
         from osgeo import osr
     except Exception:
+
         raise ImportError(
-            "GDAL does not seem to be installed on your system. Please make sure to install it using following this process: https://pypi.org/project/GDAL/"
+            "OSGEO does not seem to be installed on your system. Please make sure to install it using following this process: https://pypi.org/project/GDAL/"
         )
 
     head, tail = ntpath.split(filename)
@@ -816,4 +820,4 @@ def save_properties(filename, properties):
 
     """
     with open(filename, "w") as fout:
-        json.dumps(properties, indent=4)
+        json.dump(properties, fout, indent=4)

@@ -32,7 +32,7 @@ The main function of this library is the `fetch` function:
 
 ```python
 from geesarfetcher import fetch
-from datetime import date, timedelta
+from datetime import datetime, timedelta
 
 d = fetch(
       top_left=[-116.17556985040491, 60.527371254744246],
@@ -53,7 +53,7 @@ The fetch method loads the full data stack in memory. For large areas or long ti
 
 ```python
 from geesarfetcher import fetch_and_save
-from datetime import date, timedelta
+from datetime import datetime, timedelta
 
 fetch_and_save(
     save_dir = ".",

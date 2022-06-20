@@ -36,7 +36,7 @@ The function to call in order to retrieve data over an area is the ``fetch`` fun
 .. code:: python
 
    from geesarfetcher import fetch
-   from datetime import date, timedelta
+   from datetime import datetime, timedelta
 
    d = fetch(
       top_left=[-116.17556985040491, 60.527371254744246],
@@ -75,7 +75,7 @@ The function to call in order to retrieve & save data over an area is the ``fetc
 .. code:: python
 
    from geesarfetcher import fetch_and_save
-   from datetime import date, timedelta
+   from datetime import datetime, timedelta
 
    fetch_and_save(
       save_dir = ".",

@@ -50,12 +50,12 @@ def fetch_sentinel1_data(
     if img_count > 1:
 
         val_vv = (
-            ee.ImageCollection(sentinel_1_roi.select(VV).log10().multiply(10).mean())
+            ee.ImageCollection(sentinel_1_roi.select(VV).mean())
             .getRegion(geometry, scale=scale)
             .getInfo()
         )
         val_vh = (
-            ee.ImageCollection(sentinel_1_roi.select(VH).log10().multiply(10).mean())
+            ee.ImageCollection(sentinel_1_roi.select(VH).mean())
             .getRegion(geometry, scale=scale)
             .getInfo()
         )

@@ -98,6 +98,16 @@ pip install geesarfetcher
 earthengine authenticate
 ```
 
+To install it in 2024, you might have to use a previous version of Python, as numpy 1.19 is only supported up to the Python 3.8 version.
+If you have to use it, use a conda environment :
+```
+conda create -n name_env
+conda activate name_env
+conda install python=3.7
+conda install gdal
+pip install geesarfetcher
+```
+
 ## Contributing
 
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
